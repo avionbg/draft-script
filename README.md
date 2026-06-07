@@ -328,6 +328,16 @@ If Draft-Script helps you finish a story, catch continuity issues, or save time 
 
 ---
 
+## Disclaimer
+
+Draft-Script is provided as-is, without warranty of any kind.
+
+Always keep backups of your manuscripts and project files. Draft-Script is designed to work with plain text files and rebuildable indexes, but you are responsible for your own data, backups, publishing decisions, and use of AI-generated outputs.
+
+See the MPL-2.0 license for the full warranty and liability terms.
+
+---
+
 ## License
 
 Draft-Script is licensed under the Mozilla Public License 2.0 (MPL-2.0).

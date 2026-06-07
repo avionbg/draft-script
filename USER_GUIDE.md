@@ -3,6 +3,10 @@
 A focused writing environment for authors working on long-form books and novels in Markdown — inside VS Code.
 
 ---
+## Important
+Before using Draft-Script on important manuscripts, keep your project under version control or maintain regular backups.
+
+---
 
 ## Features
 
