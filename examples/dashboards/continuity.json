@@ -1,0 +1,8 @@
+{
+  "id": "continuity",
+  "title": "Continuity",
+  "layout": "vertical",
+  "widgets": [
+    "continuity_active"
+  ]
+}

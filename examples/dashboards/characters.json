@@ -1,0 +1,11 @@
+{
+  "id": "characters",
+  "title": "Characters",
+  "layout": "vertical",
+  "widgets": [
+    "metric_characters",
+    "character_presence_heatmap",
+    "character_appearances",
+    "characters_table"
+  ]
+}

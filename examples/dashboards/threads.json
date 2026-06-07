@@ -1,0 +1,16 @@
+{
+  "id": "threads",
+  "title": "Threads",
+  "layout": "vertical",
+  "widgets": [
+    "metric_threads",
+    "thread_lifecycle_strip",
+    "thread_presence_heatmap",
+    "threads_review",
+    "suggested_resolved",
+    "dormant_threads",
+    "active_threads",
+    "threads_table",
+    "duplicate_threads"
+  ]
+}

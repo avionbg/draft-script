@@ -1,0 +1,14 @@
+{
+  "id": "sidebar",
+  "title": "Sidebar",
+  "layout": "vertical",
+  "widgets": [
+    "threads_review",
+    "suggested_resolved",
+    "chapter_density_strip",
+    "dormant_threads",
+    "active_threads",
+    "metric_characters",
+    "metric_timeline"
+  ]
+}

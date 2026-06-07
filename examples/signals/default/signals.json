@@ -1,0 +1,10 @@
+[
+  { "id": "knowledge_transfer",     "description": "Knowledge is transferred from one character or group to another." },
+  { "id": "misunderstanding",       "description": "Knowledge is partially misunderstood or distorted." },
+  { "id": "autonomy",               "description": "A character acts independently without direct guidance." },
+  { "id": "institution_seed",       "description": "A persistent social structure begins to emerge." },
+  { "id": "dependency_on_character","description": "A character or group depends on another for key needs." },
+  { "id": "under_the_rug",          "description": "A character notices an anomaly or inconsistency but postpones investigation because a more urgent problem takes priority." },
+  { "id": "anomaly",                "description": "Something does not fit expected patterns or rules." },
+  { "id": "culture_shift",          "description": "A cultural norm, belief, or behavior begins to change." }
+]

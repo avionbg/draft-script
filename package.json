@@ -1,0 +1,735 @@
+{
+  "name": "draft-script",
+  "displayName": "Draft-Script",
+  "description": "A comprehensive writing environment for authors creating long-form books and novels in Markdown.",
+  "version": "0.2.6",
+  "publisher": "avionbg",
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/avionbg/draft-script.git"
+  },
+  "license": "MPL-2.0",
+  "categories": [
+    "AI",
+    "Other"
+  ],
+  "keywords": [
+    "markdown",
+    "novel",
+    "writing",
+    "author",
+    "fiction",
+    "book",
+    "storytelling",
+    "narrative",
+    "llm",
+    "creative writing"
+  ],
+  "activationEvents": [
+    "onLanguage:markdown",
+    "workspaceContains:**/*.md"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "draftScript.mergeChapters",
+        "title": "Draft-Script: Merge All Chapters"
+      },
+      {
+        "command": "draftScript.splitDocument",
+        "title": "Draft-Script: Split Document by Headings"
+      },
+      {
+        "command": "draftScript.refreshNavigator",
+        "title": "Refresh Navigator",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "draftScript.refreshCharacters",
+        "title": "Refresh Characters",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "draftScript.refreshRepetition",
+        "title": "Refresh Repetition",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "draftScript.openAtLine",
+        "title": "Draft-Script: Open File at Line"
+      },
+      {
+        "command": "draftScript.selectNovelFolder",
+        "title": "Draft-Script: Select Novel Root Folder",
+        "icon": "$(folder-opened)"
+      },
+      {
+        "command": "draftScript.toggleViewMode",
+        "title": "Draft-Script: Toggle Chapter Focus",
+        "icon": "$(target)"
+      },
+      {
+        "command": "draftScript.enableFocusMode",
+        "title": "Draft-Script: Enable Chapter Focus",
+        "icon": "$(eye-closed)"
+      },
+      {
+        "command": "draftScript.disableFocusMode",
+        "title": "Draft-Script: Disable Chapter Focus",
+        "icon": "$(target)"
+      },
+      {
+        "command": "draftScript.addComment",
+        "title": "Draft-Script: Add Comment to Selection"
+      },
+      {
+        "command": "draftScript.openCharactersFile",
+        "title": "Edit Characters File",
+        "icon": "$(edit)"
+      },
+      {
+        "command": "draftScript.openNotesFile",
+        "title": "Edit Notes File",
+        "icon": "$(edit)"
+      },
+      {
+        "command": "draftScript.addChapter",
+        "title": "Draft-Script: Add Chapter",
+        "icon": "$(add)"
+      },
+      {
+        "command": "draftScript.dsmAnalyzeText",
+        "title": "DSM: Analyze Selected Text"
+      },
+      {
+        "command": "draftScript.dsmAnalyzeChapter",
+        "title": "DSM: Analyze Chapter"
+      },
+      {
+        "command": "draftScript.dsmPreviewAnalyzeChapter",
+        "title": "DSM: Preview Analyze Chapter"
+      },
+      {
+        "command": "draftScript.importDsmCharacters",
+        "title": "Import from DSM Index",
+        "icon": "$(cloud-download)"
+      },
+      {
+        "command": "draftScript.dsmOpenCanonEditor",
+        "title": "DSM: Open Canon Editor",
+        "icon": "$(book)"
+      },
+      {
+        "command": "draftScript.dsmOpenIndexExplorer",
+        "title": "DSM: Open Index Explorer",
+        "icon": "$(list-tree)"
+      },
+      {
+        "command": "draftScript.dsmSelectModel",
+        "title": "DSM: Select VS Code LM Model"
+      },
+      {
+        "command": "draftScript.dsmSelectOllamaModel",
+        "title": "DSM: Select Ollama Model"
+      },
+      {
+        "command": "draftScript.dsmRescanChanged",
+        "title": "DSM: Rescan Changed Chapters",
+        "icon": "$(sync)"
+      },
+      {
+        "command": "draftScript.dsmOpenDashboard",
+        "title": "Draft-Script: Open Dashboard",
+        "icon": "$(graph)"
+      },
+      {
+        "command": "draftScript.dsmReloadDashboards",
+        "title": "Draft-Script: Reload Dashboards",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "draftScript.dsmOpenDashboardFolder",
+        "title": "Draft-Script: Open Dashboard Folder",
+        "icon": "$(folder-opened)"
+      },
+      {
+        "command": "draftScript.dsmMarkChapterScanned",
+        "title": "DSM: Mark as Scanned",
+        "icon": "$(pass)"
+      },
+      {
+        "command": "draftScript.openStoryNavigator",
+        "title": "DSM: Story Navigator",
+        "icon": "$(search)"
+      },
+      {
+        "command": "draftScript.dsmConfirmSuggestedResolution",
+        "title": "DSM: Confirm Suggested Resolution"
+      },
+      {
+        "command": "draftScript.dsmRejectSuggestedResolution",
+        "title": "DSM: Reject Suggested Resolution"
+      },
+      {
+        "command": "draftScript.dsmMarkThreadResolved",
+        "title": "DSM: Mark Thread Resolved"
+      },
+      {
+        "command": "draftScript.dsmReopenThread",
+        "title": "DSM: Reopen Thread"
+      },
+      {
+        "command": "draftScript.dsmMarkThreadActive",
+        "title": "DSM: Mark Thread Active"
+      },
+      {
+        "command": "draftScript.dsmLinkParentThread",
+        "title": "DSM: Link to Parent Thread"
+      },
+      {
+        "command": "draftScript.dsmRegenerateIndexes",
+        "title": "DSM: Regenerate Indexes"
+      },
+      {
+        "command": "draftScript.insertChapterBefore",
+        "title": "Draft-Script: Insert Chapter Before"
+      },
+      {
+        "command": "draftScript.insertChapterAfter",
+        "title": "Draft-Script: Insert Chapter After"
+      },
+      {
+        "command": "draftScript.moveChapter",
+        "title": "Draft-Script: Move Chapter..."
+      },
+      {
+        "command": "draftScript.renumberChapters",
+        "title": "Draft-Script: Renumber Chapters"
+      },
+      {
+        "command": "draftScript.lockStats",
+        "title": "Draft-Script: Lock Stats to Novel",
+        "icon": "$(unlock)"
+      },
+      {
+        "command": "draftScript.unlockStats",
+        "title": "Draft-Script: Unlock Stats (Follow Cursor)",
+        "icon": "$(lock)"
+      },
+      {
+        "command": "draftScript.previewPrompt",
+        "title": "DSM: Preview Prompt",
+        "icon": "$(eye)"
+      },
+      {
+        "command": "draftScript.copyPrompt",
+        "title": "DSM: Copy Prompt to Clipboard",
+        "icon": "$(copy)"
+      },
+      {
+        "command": "draftScript.runPrompt",
+        "title": "DSM: Run Prompt",
+        "icon": "$(zap)"
+      },
+      {
+        "command": "draftScript.runAndSavePrompt",
+        "title": "DSM: Run And Save Output",
+        "icon": "$(save)"
+      },
+      {
+        "command": "draftScript.inspectChapterTime",
+        "title": "Draft-Script: Inspect Chapter Time"
+      },
+      {
+        "command": "draftScript.inspectTimeRange",
+        "title": "Draft-Script: Inspect Time Range"
+      },
+      {
+        "command": "draftScript.inspectCurrentChapterTime",
+        "title": "Draft-Script: Inspect Current Chapter Time"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "draftScriptNavigator",
+          "title": "Draft-Script Navigator",
+          "icon": "resources/icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "draftScriptNavigator": [
+        {
+          "id": "draftScript.navigator",
+          "name": "Novel Navigator",
+          "type": "tree"
+        },
+        {
+          "id": "draftScript.statistics",
+          "name": "Novel Statistics",
+          "type": "webview"
+        },
+        {
+          "id": "draftScript.characters",
+          "name": "Characters",
+          "type": "webview"
+        },
+        {
+          "id": "draftScript.comments",
+          "name": "Comments",
+          "type": "webview"
+        },
+        {
+          "id": "draftScript.dsmDashboard",
+          "name": "Dashboards",
+          "type": "webview"
+        },
+        {
+          "id": "draftScript.repetition",
+          "name": "Repetition",
+          "type": "webview"
+        }
+      ]
+    },
+    "menus": {
+      "editor/context": [
+        {
+          "command": "draftScript.addComment",
+          "when": "editorLangId == markdown && editorHasSelection",
+          "group": "draftScript@1"
+        },
+        {
+          "command": "draftScript.dsmAnalyzeText",
+          "when": "editorLangId == markdown && editorHasSelection && draftScript.llmEnabled",
+          "group": "draftScript@2"
+        }
+      ],
+      "view/title": [
+        {
+          "command": "draftScript.addChapter",
+          "when": "view == draftScript.navigator",
+          "group": "navigation"
+        },
+        {
+          "command": "draftScript.refreshNavigator",
+          "when": "view == draftScript.navigator",
+          "group": "navigation"
+        },
+        {
+          "command": "draftScript.selectNovelFolder",
+          "when": "view == draftScript.navigator",
+          "group": "navigation"
+        },
+        {
+          "command": "draftScript.enableFocusMode",
+          "when": "view == draftScript.navigator && !draftScript.isFocusMode && !draftScript.isMultiFile",
+          "group": "navigation"
+        },
+        {
+          "command": "draftScript.disableFocusMode",
+          "when": "view == draftScript.navigator && draftScript.isFocusMode && !draftScript.isMultiFile",
+          "group": "navigation"
+        },
+        {
+          "command": "draftScript.lockStats",
+          "when": "view == draftScript.statistics && !draftScript.statsLocked",
+          "group": "navigation"
+        },
+        {
+          "command": "draftScript.unlockStats",
+          "when": "view == draftScript.statistics && draftScript.statsLocked",
+          "group": "navigation"
+        },
+        {
+          "command": "draftScript.openNotesFile",
+          "when": "view == draftScript.comments",
+          "group": "navigation"
+        },
+        {
+          "command": "draftScript.refreshCharacters",
+          "when": "view == draftScript.characters",
+          "group": "navigation"
+        },
+        {
+          "command": "draftScript.dsmOpenCanonEditor",
+          "when": "view == draftScript.characters && draftScript.llmEnabled",
+          "group": "navigation@0"
+        },
+        {
+          "command": "draftScript.importDsmCharacters",
+          "when": "view == draftScript.characters && draftScript.llmEnabled",
+          "group": "navigation@1"
+        },
+        {
+          "command": "draftScript.openCharactersFile",
+          "when": "view == draftScript.characters",
+          "group": "navigation@2"
+        },
+        {
+          "command": "draftScript.refreshRepetition",
+          "when": "view == draftScript.repetition",
+          "group": "navigation"
+        },
+        {
+          "command": "draftScript.dsmOpenDashboard",
+          "when": "view == draftScript.dsmDashboard && draftScript.llmEnabled",
+          "group": "navigation@1"
+        },
+        {
+          "command": "draftScript.dsmOpenDashboardFolder",
+          "when": "view == draftScript.dsmDashboard && draftScript.llmEnabled",
+          "group": "navigation@3"
+        },
+        {
+          "command": "draftScript.dsmReloadDashboards",
+          "when": "view == draftScript.dsmDashboard && draftScript.llmEnabled",
+          "group": "navigation@2"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "draftScript.insertChapterBefore",
+          "when": "view == draftScript.navigator && viewItem == draftScriptFile",
+          "group": "chapters@1"
+        },
+        {
+          "command": "draftScript.insertChapterAfter",
+          "when": "view == draftScript.navigator && viewItem == draftScriptFile",
+          "group": "chapters@2"
+        },
+        {
+          "command": "draftScript.moveChapter",
+          "when": "view == draftScript.navigator && viewItem == draftScriptFile",
+          "group": "chapters_move@1"
+        },
+        {
+          "command": "draftScript.renumberChapters",
+          "when": "view == draftScript.navigator && viewItem == draftScriptFile",
+          "group": "chapters_renumber@1"
+        },
+        {
+          "command": "draftScript.dsmMarkChapterScanned",
+          "when": "view == draftScript.navigator && viewItem == draftScriptHeading && draftScript.llmEnabled",
+          "group": "dsmScan@1"
+        },
+        {
+          "command": "draftScript.dsmAnalyzeChapter",
+          "when": "view == draftScript.navigator && (viewItem == draftScriptFile || viewItem == draftScriptHeading) && draftScript.llmEnabled",
+          "group": "dsm@1"
+        },
+        {
+          "command": "draftScript.dsmPreviewAnalyzeChapter",
+          "when": "view == draftScript.navigator && (viewItem == draftScriptFile || viewItem == draftScriptHeading) && draftScript.llmEnabled",
+          "group": "dsm@2"
+        },
+        {
+          "command": "draftScript.previewPrompt",
+          "when": "view == draftScript.navigator && (viewItem == draftScriptFile || viewItem == draftScriptHeading) && draftScript.llmEnabled",
+          "group": "dsm@3"
+        },
+        {
+          "command": "draftScript.copyPrompt",
+          "when": "view == draftScript.navigator && (viewItem == draftScriptFile || viewItem == draftScriptHeading) && draftScript.llmEnabled",
+          "group": "dsm@4"
+        },
+        {
+          "command": "draftScript.runPrompt",
+          "when": "view == draftScript.navigator && (viewItem == draftScriptFile || viewItem == draftScriptHeading) && draftScript.llmEnabled",
+          "group": "dsm@5"
+        },
+        {
+          "command": "draftScript.runAndSavePrompt",
+          "when": "view == draftScript.navigator && (viewItem == draftScriptFile || viewItem == draftScriptHeading) && draftScript.llmEnabled",
+          "group": "dsm@6"
+        }
+      ],
+      "commandPalette": [
+        { "command": "draftScript.dsmAnalyzeText",       "when": "draftScript.llmEnabled" },
+        { "command": "draftScript.dsmAnalyzeChapter",    "when": "draftScript.llmEnabled" },
+        { "command": "draftScript.dsmPreviewAnalyzeChapter", "when": "draftScript.llmEnabled" },
+        { "command": "draftScript.importDsmCharacters",  "when": "draftScript.llmEnabled" },
+        { "command": "draftScript.dsmOpenCanonEditor",   "when": "draftScript.llmEnabled" },
+        { "command": "draftScript.dsmSelectModel",       "when": "draftScript.llmEnabled" },
+        { "command": "draftScript.dsmSelectOllamaModel", "when": "draftScript.llmEnabled" },
+        { "command": "draftScript.dsmRescanChanged",     "when": "draftScript.llmEnabled" },
+        { "command": "draftScript.dsmOpenDashboard",     "when": "draftScript.llmEnabled" },
+        { "command": "draftScript.dsmReloadDashboards",  "when": "draftScript.llmEnabled" },
+        { "command": "draftScript.dsmOpenDashboardFolder", "when": "draftScript.llmEnabled" },
+        { "command": "draftScript.dsmConfirmSuggestedResolution", "when": "draftScript.llmEnabled" },
+        { "command": "draftScript.dsmRejectSuggestedResolution",  "when": "draftScript.llmEnabled" },
+        { "command": "draftScript.dsmMarkThreadResolved",         "when": "draftScript.llmEnabled" },
+        { "command": "draftScript.dsmReopenThread",               "when": "draftScript.llmEnabled" },
+        { "command": "draftScript.dsmMarkThreadActive",           "when": "draftScript.llmEnabled" },
+        { "command": "draftScript.dsmLinkParentThread",           "when": "draftScript.llmEnabled" },
+        { "command": "draftScript.dsmMarkChapterScanned",  "when": "draftScript.llmEnabled" },
+        { "command": "draftScript.openStoryNavigator",   "when": "draftScript.llmEnabled" },
+        { "command": "draftScript.dsmRegenerateIndexes", "when": "draftScript.llmEnabled" },
+        { "command": "draftScript.refreshRepetition" },
+        { "command": "draftScript.previewPrompt",        "when": "draftScript.llmEnabled" },
+        { "command": "draftScript.copyPrompt",           "when": "draftScript.llmEnabled" },
+        { "command": "draftScript.runPrompt",            "when": "draftScript.llmEnabled" },
+        { "command": "draftScript.runAndSavePrompt",     "when": "draftScript.llmEnabled" }
+      ]
+    },
+    "configuration": {
+      "title": "Draft-Script",
+      "properties": {
+        "draftScript.enableLLM": {
+          "order": 0,
+          "type": "boolean",
+          "default": true,
+          "description": "Enable LLM-powered analysis features such as indexes, continuity, signals, time analysis, translation, beta reader, developmental editor, and manuscript analytics. When disabled, these panels show a placeholder and all related commands are hidden."
+        },
+        "draftScript.chapterFormat": {
+          "order": 1,
+          "type": "string",
+          "default": "Chapter {num}:",
+          "description": "Format for new chapter headings. Use {num} as the placeholder for the auto-incremented chapter number. Example: \"Chapter {num}:\" produces \"# Chapter 3: My Title\"."
+        },
+        "draftScript.novelFolder": {
+          "order": 2,
+          "type": "string",
+          "default": "",
+          "description": "Path to the novel workspace folder. Relative paths resolve from workspace root. Leave empty to use workspace root."
+        },
+        "draftScript.showTreeWordCount": {
+          "order": 3,
+          "type": "boolean",
+          "default": true,
+          "description": "Show word count badges on items in the Navigator tree view."
+        },
+        "draftScript.navigatorExclude": {
+          "order": 4,
+          "type": "array",
+          "items": { "type": "string" },
+          "default": [],
+          "description": "Folder names to hide from the Navigator tree. Useful for excluding translation output folders (e.g. [\"en\", \"de\"]) or any other subfolder that should not appear as chapters."
+        },
+        "draftScript.characterSorting": {
+          "order": 4,
+          "type": "string",
+          "enum": [
+            "alphabetical",
+            "appearance"
+          ],
+          "enumDescriptions": [
+            "Sort characters A-Z by name.",
+            "Sort characters by order of appearance in characters.md."
+          ],
+          "default": "appearance",
+          "description": "Controls how characters are sorted in the Characters sidebar."
+        },
+        "draftScript.showCharacterCount": {
+          "order": 5,
+          "type": "boolean",
+          "default": true,
+          "description": "Show how many times each character is mentioned across the novel."
+        },
+        "draftScript.characterInflections": {
+          "order": 6,
+          "type": "boolean",
+          "default": false,
+          "description": "Also count inflected name forms as mentions. Uses the suffix list in draftScript.inflectionSuffixes."
+        },
+        "draftScript.inflectionFeminineIn": {
+          "order": 7,
+          "type": "boolean",
+          "default": false,
+          "description": "For feminine names ending in -a, also count the possessive -in paradigm (e.g. Mirjana → Mirjanin, Mirjanina, Mirjaninom…). Requires characterInflections to be enabled."
+        },
+        "draftScript.inflectionSuffixes": {
+          "order": 8,
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "ovog",
+            "ovom",
+            "ovo",
+            "ova",
+            "ove",
+            "ovi",
+            "ovu",
+            "ov",
+            "evog",
+            "evom",
+            "evo",
+            "eva",
+            "eve",
+            "evi",
+            "evu",
+            "ev",
+            "om",
+            "em",
+            "im",
+            "a",
+            "e",
+            "u",
+            "i",
+            "o"
+          ],
+          "description": "Suffix list appended to character names when characterInflections is enabled. Order does not matter — suffixes are sorted by length automatically."
+        },
+        "draftScript.enableSmartDashes": {
+          "order": 9,
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically convert double hyphens (--) to em-dashes (—) while typing."
+        },
+        "draftScript.typewriterMode": {
+          "order": 10,
+          "type": "boolean",
+          "default": false,
+          "description": "Keep the cursor vertically centered while typing so the text scrolls up like paper through a typewriter. Only applies in Markdown files."
+        },
+        "draftScript.characterHover": {
+          "order": 11,
+          "type": "boolean",
+          "default": true,
+          "description": "Show character details in a hover tooltip when hovering over a character name (or inflected form) in the editor."
+        },
+        "draftScript.viewMode": {
+          "order": 12,
+          "type": "string",
+          "enum": [
+            "continuous",
+            "focus"
+          ],
+          "enumDescriptions": [
+            "Navigate to the clicked chapter without changing the editor layout — the full document stays visible.",
+            "Collapse all other chapters when a chapter is clicked, showing only the selected section."
+          ],
+          "default": "continuous",
+          "description": "Controls how the editor behaves when you click a heading in the Navigator."
+        },
+        "draftScript.dsmProvider": {
+          "order": 20,
+          "type": "string",
+          "enum": [
+            "vscode-lm",
+            "openai",
+            "ollama",
+            "mock"
+          ],
+          "enumDescriptions": [
+            "GitHub Copilot via the VS Code Language Model API (requires Copilot).",
+            "OpenAI API (requires draftScript.dsmOpenAiApiKey).",
+            "Local Ollama instance (requires draftScript.dsmOllamaUrl and draftScript.dsmOllamaModel).",
+            "Mock provider — returns sample data without any API call. Useful for testing."
+          ],
+          "default": "vscode-lm",
+          "description": "LLM provider used by DSM analysis commands."
+        },
+        "draftScript.dsmVsCodeLmModel": {
+          "order": 21,
+          "type": "string",
+          "default": "first",
+          "description": "VS Code Language Model to use when dsmProvider is 'vscode-lm'. Use 'first' to select the first model returned by the API, or run 'DSM: Select VS Code LM Model' from the Command Palette to pick interactively. The model ID is stored here (e.g. 'claude-sonnet-4.6')."
+        },
+        "draftScript.dsmTimeoutSeconds": {
+          "order": 22,
+          "type": "number",
+          "default": 180,
+          "description": "Timeout in seconds for DSM LLM requests. Increase if long chapters time out. Default: 180 (3 minutes)."
+        },
+        "draftScript.debugMode": {
+          "order": 99,
+          "type": "boolean",
+          "default": false,
+          "description": "Show diagnostic debug bar in DSM Canon Editor (for development only)."
+        },
+        "draftScript.dsmReviewFontSize": {
+          "order": 23,
+          "type": "number",
+          "default": 13,
+          "minimum": 9,
+          "maximum": 22,
+          "description": "Base font size (px) for the DSM Review panel. All other text sizes scale from this value."
+        },
+        "draftScript.dsmAutoScanMinCertainty": {
+          "order": 24,
+          "type": "number",
+          "default": 80,
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Minimum confidence % (0–100) required for an entity to be auto-approved when 'Scan automatically' is enabled in the DSM Review panel. Entities below this threshold are skipped and must be approved manually."
+        },
+        "draftScript.dsmOpenAiApiKey": {
+          "order": 30,
+          "type": "string",
+          "default": "",
+          "description": "OpenAI API key for DSM analysis. Only used when draftScript.dsmProvider is 'openai'."
+        },
+        "draftScript.dsmOpenAiModel": {
+          "order": 31,
+          "type": "string",
+          "default": "gpt-4.1-mini",
+          "description": "OpenAI model for DSM analysis. Only used when draftScript.dsmProvider is 'openai'."
+        },
+        "draftScript.dsmOllamaUrl": {
+          "order": 32,
+          "type": "string",
+          "default": "http://localhost:11434",
+          "description": "Ollama base URL for DSM analysis. Only used when draftScript.dsmProvider is 'ollama'."
+        },
+        "draftScript.dsmOllamaModel": {
+          "order": 33,
+          "type": "string",
+          "default": "llama3",
+          "description": "Ollama model for DSM analysis. Only used when draftScript.dsmProvider is 'ollama'."
+        },
+        "draftScript.dsmRescanMinCertainty": {
+          "order": 25,
+          "type": "number",
+          "default": 80,
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Minimum confidence % (0–100) for auto-approval when running 'DSM: Rescan Changed Chapters'. Entities below this threshold are skipped."
+        },
+        "draftScript.dsmRescanMergeUncertain": {
+          "order": 26,
+          "type": "boolean",
+          "default": false,
+          "description": "When running 'DSM: Rescan Changed Chapters', automatically link uncertain entities to their closest existing canon match instead of creating new entries."
+        },
+        "draftScript.promptWarningTokens": {
+          "order": 27,
+          "type": "number",
+          "default": 10000,
+          "minimum": 1000,
+          "description": "Show a confirmation prompt before running a DSM prompt if the estimated token count exceeds this threshold. Set to a very high number to disable the warning."
+        },
+        "draftScript.dsmPromptFile": {
+          "order": 99,
+          "type": "string",
+          "default": "",
+          "deprecationMessage": "Deprecated: edit .draft-script/prompts/dsm-analysis.md directly. This file is created automatically on the first DSM scan."
+        }
+      }
+    },
+    "keybindings": [
+      {
+        "command": "draftScript.addChapter",
+        "key": "ctrl+enter"
+      }
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "pretest": "npm run compile",
+    "test": "node ./out/test/runTest.js"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/vscode": "1.90.0",
+    "typescript": "^5.3.0"
+  }
+}

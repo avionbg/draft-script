@@ -1,0 +1,13 @@
+{
+  "id": "my-dashboard",
+  "title": "My Dashboard",
+  "layout": "vertical",
+  "widgets": [
+    "metric_characters",
+    "metric_threads",
+    "threads_review",
+    "active_threads",
+    "timeline_events",
+    "character_appearances"
+  ]
+}

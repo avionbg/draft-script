@@ -1,0 +1,12 @@
+{
+  "id": "timeline",
+  "title": "Timeline",
+  "layout": "vertical",
+  "widgets": [
+    "metric_timeline",
+    "timeline_density_strip",
+    "time_gap_sparkline",
+    "timeline_events",
+    "timeline_table"
+  ]
+}
