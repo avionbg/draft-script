@@ -1,0 +1,24 @@
+# Version control and editor metadata
+.git/**
+.vscode/**
+
+# Local tooling and backups
+.claude/**
+.bak/**
+
+# Dependencies and generated packages
+node_modules/**
+*.vsix
+
+# TypeScript source and build metadata
+src/**
+tsconfig.json
+out/**/*.map
+
+# Development-only files
+package-lock.json
+CONTRIBUTING.md
+DASHBOARD.md
+PROMPTS.md
+USER_GUIDE.md
+examples/**

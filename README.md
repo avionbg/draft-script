@@ -1,4 +1,6 @@
 # Draft-Script
+[![VS Code Marketplace](https://img.shields.io/visual-studio-marketplace/v/MGAlter.draft-script?label=VS%20Code%20Marketplace)](https://marketplace.visualstudio.com/items?itemName=MGAlter.draft-script)
+[![License: MPL-2.0](https://img.shields.io/badge/License-MPL--2.0-blue.svg)](./LICENSE)
 
 A VS Code extension for long-form fiction writing.
 

@@ -3,7 +3,7 @@
   "displayName": "Draft-Script",
   "description": "A comprehensive writing environment for authors creating long-form books and novels in Markdown.",
   "version": "0.2.6",
-  "publisher": "avionbg",
+  "publisher": "MGAlter",
   "engines": {
     "vscode": "^1.90.0"
   },
