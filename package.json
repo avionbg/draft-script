@@ -60,6 +60,10 @@
         "icon": "$(refresh)"
       },
       {
+        "command": "draftScript.suggestLineEditsForRepetitionChapter",
+        "title": "Draft-Script: Suggest Line Edits for This Chapter"
+      },
+      {
         "command": "draftScript.openAtLine",
         "title": "Draft-Script: Open File at Line"
       },
@@ -227,6 +231,16 @@
         "icon": "$(lock)"
       },
       {
+        "command": "draftScript.lockRepetition",
+        "title": "Draft-Script: Lock Repetition to Novel",
+        "icon": "$(unlock)"
+      },
+      {
+        "command": "draftScript.unlockRepetition",
+        "title": "Draft-Script: Unlock Repetition (Follow Cursor)",
+        "icon": "$(lock)"
+      },
+      {
         "command": "draftScript.previewPrompt",
         "title": "DSM: Preview Prompt",
         "icon": "$(eye)"
@@ -379,6 +393,16 @@
         {
           "command": "draftScript.refreshRepetition",
           "when": "view == draftScript.repetition",
+          "group": "navigation"
+        },
+        {
+          "command": "draftScript.lockRepetition",
+          "when": "view == draftScript.repetition && !draftScript.repetitionLocked",
+          "group": "navigation"
+        },
+        {
+          "command": "draftScript.unlockRepetition",
+          "when": "view == draftScript.repetition && draftScript.repetitionLocked",
           "group": "navigation"
         },
         {

@@ -33,6 +33,7 @@ export function visiblePredicate(mode: VisibilityMode, current: number): (ch: nu
 function defaultContextIds(scope: string): PromptContextBlockId[] {
   switch (scope) {
     case 'selection':  return ['selectedText', 'chapterMeta'];
+    case 'sentence':   return [];
     case 'chapter':    return ['chapterText', 'chapterMeta', 'characters', 'activeThreads', 'activeContinuity', 'signals'];
     case 'manuscript': return ['characters', 'locations', 'objects', 'groups', 'activeThreads', 'activeContinuity', 'timeline', 'signals'];
     default:           return ['chapterText', 'chapterMeta', 'characters', 'activeThreads'];

@@ -3,7 +3,7 @@ export type  { IncludeNode, IncludeError };
 
 // ─── Scope ────────────────────────────────────────────────────────────────────
 
-export type PromptScope        = 'selection' | 'chapter' | 'manuscript';
+export type PromptScope        = 'selection' | 'sentence' | 'chapter' | 'manuscript';
 export type PromptProvider     = 'default' | 'vscode-lm' | 'openai' | 'ollama';
 export type PromptOutputFormat = 'markdown' | 'json';
 
@@ -89,6 +89,8 @@ export interface PromptDefinition {
   description?: string;
   enabled?:     boolean;
   writer?:      boolean;
+  lineEdit?:    boolean;
+  lineEditType?: string;
 }
 
 // ─── Runtime context ──────────────────────────────────────────────────────────
@@ -102,6 +104,7 @@ export interface PromptRunContext {
   chapterText?:   string;   // pre-extracted section text
   selectedText?:  string;
   userBrief?:     string;
+  promptVariables?: Record<string, string>;
 }
 
 // ─── Rendered context block ───────────────────────────────────────────────────

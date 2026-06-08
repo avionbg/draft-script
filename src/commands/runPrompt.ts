@@ -19,7 +19,7 @@ async function pickPrompt(
   emptyHint?:    string,
 ): Promise<PromptDefinition | undefined> {
   const all     = registry.getAll();
-  const prompts = filter ? all.filter(filter) : all;
+  const prompts = filter ? all.filter(filter) : all.filter(p => !p.lineEdit);
 
   if (!prompts.length) {
     if (all.length && emptyHint) {

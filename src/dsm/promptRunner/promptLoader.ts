@@ -4,6 +4,7 @@ import { PromptDefinition, PromptScope, PromptProvider, PromptOutputFormat, Prom
 
 const RESERVED_FILENAMES = new Set(['dsm-analysis.md']);
 const PROMPTS_DIR = path.join('.draft-script', 'prompts');
+const BUNDLED_PROMPTS_DIR = 'prompts';
 
 // ─── YAML frontmatter parser ──────────────────────────────────────────────────
 
@@ -85,7 +86,7 @@ function parseFrontmatter(text: string): { fm: Record<string, unknown>; body: st
 
 // ─── Normalization helpers ────────────────────────────────────────────────────
 
-const VALID_SCOPES      = new Set<PromptScope>(['selection', 'chapter', 'manuscript']);
+const VALID_SCOPES      = new Set<PromptScope>(['selection', 'sentence', 'chapter', 'manuscript']);
 const VALID_PROVIDERS   = new Set<PromptProvider>(['default', 'vscode-lm', 'openai', 'ollama']);
 const VALID_OUTPUTS     = new Set<PromptOutputFormat>(['markdown', 'json']);
 const VALID_VISIBILITY  = new Set<VisibilityMode>(['all', 'upToChapter', 'previousChapters', 'currentChapterOnly']);
@@ -222,27 +223,38 @@ function parsePromptFile(filePath: string): PromptDefinition | null {
     description: typeof fm['description'] === 'string' ? fm['description'] : undefined,
     enabled:     true,
     writer:      fm['writer'] === true ? true : undefined,
+    lineEdit:    fm['line-edit'] === true ? true : undefined,
+    lineEditType: typeof fm['line-edit-type'] === 'string' ? fm['line-edit-type'] : undefined,
   };
 }
 
 // ─── Directory scan ───────────────────────────────────────────────────────────
 
 export function loadPrompts(rootFolder: string): Map<string, PromptDefinition> {
-  const dir = path.join(rootFolder, PROMPTS_DIR);
-
-  if (!fs.existsSync(dir)) {
-    try { fs.mkdirSync(dir, { recursive: true }); }
-    catch { /* ignore */ }
-    return new Map();
-  }
-
   const map = new Map<string, PromptDefinition>();
+  loadPromptDir(path.join(rootFolder, PROMPTS_DIR), map, 'project');
+  loadPromptDir(path.join(extensionRoot(), BUNDLED_PROMPTS_DIR), map, 'bundled');
+  return map;
+}
+
+function extensionRoot(): string {
+  return path.resolve(__dirname, '..', '..', '..');
+}
+
+function loadPromptDir(dir: string, map: Map<string, PromptDefinition>, source: 'project' | 'bundled'): void {
+  if (!fs.existsSync(dir)) {
+    if (source === 'project') {
+      try { fs.mkdirSync(dir, { recursive: true }); }
+      catch { /* ignore */ }
+    }
+    return;
+  }
 
   let entries: fs.Dirent[];
   try { entries = fs.readdirSync(dir, { withFileTypes: true }); }
-  catch { return map; }
+  catch { return; }
 
-  for (const entry of entries) {
+  for (const entry of entries.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }))) {
     if (!entry.isFile() || !entry.name.endsWith('.md')) continue;
     if (RESERVED_FILENAMES.has(entry.name)) continue;
 
@@ -255,6 +267,4 @@ export function loadPrompts(rootFolder: string): Map<string, PromptDefinition> {
     }
     map.set(def.id, def);
   }
-
-  return map;
 }

@@ -26,6 +26,9 @@ export function buildPrompt(def: PromptDefinition, ctx: PromptRunContext): Rende
   const overrides: Record<string, string> = {};
   if (ctx.chapterNumber != null) overrides['nextChapterNumber'] = String(ctx.chapterNumber + 1);
   overrides['userBrief'] = ctx.userBrief?.trim() ?? '';
+  for (const [key, value] of Object.entries(ctx.promptVariables ?? {})) {
+    overrides[key] = value;
+  }
   const finalPrompt = assemblePrompt(resolvedBody, blocks, overrides);
 
   // ── Step 4: compute stats ─────────────────────────────────────────────────

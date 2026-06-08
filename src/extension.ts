@@ -113,6 +113,7 @@ export function activate(context: vscode.ExtensionContext): void {
   // Set multi-file context so focus-mode buttons hide in split-file novels.
   updateMultiFileContextForFolder(novelFolder);
   vscode.commands.executeCommand('setContext', 'draftScript.statsLocked', false);
+  vscode.commands.executeCommand('setContext', 'draftScript.repetitionLocked', false);
 
   // Apply LLM-toggle and panel-visibility context keys.
   applyLlmContext();
@@ -121,7 +122,6 @@ export function activate(context: vscode.ExtensionContext): void {
   const navigatorProvider = new NavigatorTreeProvider(novelFolder);
   const statisticsProvider = new StatisticsWebviewProvider(novelFolder);
   const charactersProvider = new CharactersWebviewProvider(novelFolder, getRootFolder());
-  const repetitionProvider = new RepetitionWebviewProvider(novelFolder);
   const commentDecorationProvider = new CommentDecorationProvider(getRootFolder);
   const characterHoverProvider = new CharacterHoverProvider(getRootFolder);
   const commentsProvider = new CommentsWebviewProvider(getRootFolder, getNovelFolder);
@@ -131,6 +131,7 @@ export function activate(context: vscode.ExtensionContext): void {
   const promptPreviewProvider = new VirtualDocumentProvider(VirtualDocumentProvider.PREVIEW_SCHEME);
   const promptResultProvider  = new VirtualDocumentProvider(VirtualDocumentProvider.RESULT_SCHEME);
   const promptRegistry        = new PromptRegistry(getRootFolder());
+  const repetitionProvider = new RepetitionWebviewProvider(novelFolder, getRootFolder, promptRegistry);
   promptRegistry.load();
   promptRegistry.watch(context);
   context.subscriptions.push(
@@ -195,6 +196,9 @@ export function activate(context: vscode.ExtensionContext): void {
     ),
     vscode.commands.registerCommand('draftScript.refreshRepetition', () =>
       repetitionProvider.setNovelFolder(getNovelFolder())
+    ),
+    vscode.commands.registerCommand('draftScript.suggestLineEditsForRepetitionChapter', () =>
+      repetitionProvider.suggestLineEditsForSelectedPhrase()
     ),
 
     vscode.commands.registerCommand('draftScript.addChapter', () =>
@@ -425,6 +429,8 @@ export function activate(context: vscode.ExtensionContext): void {
     // Lock / unlock statistics panel to novel scope
     vscode.commands.registerCommand('draftScript.lockStats',   () => statisticsProvider.toggleLock()),
     vscode.commands.registerCommand('draftScript.unlockStats', () => statisticsProvider.toggleLock()),
+    vscode.commands.registerCommand('draftScript.lockRepetition',   () => repetitionProvider.toggleLock()),
+    vscode.commands.registerCommand('draftScript.unlockRepetition', () => repetitionProvider.toggleLock()),
 
     // Chapter management
     vscode.commands.registerCommand('draftScript.insertChapterBefore', async (item) => {

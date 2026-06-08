@@ -30,6 +30,10 @@ export class PromptRegistry implements vscode.Disposable {
     return this.prompts.get(id);
   }
 
+  getLineEditPrompt(): PromptDefinition | undefined {
+    return this.getAll().find(p => p.lineEdit === true);
+  }
+
   dispose(): void {
     this.watcher?.dispose();
   }
