@@ -1,5 +1,5 @@
 # Draft-Script
-[![VS Code Marketplace](https://img.shields.io/visual-studio-marketplace/v/MGAlter.draft-script?label=VS%20Code%20Marketplace)](https://marketplace.visualstudio.com/items?itemName=MGAlter.draft-script)
+[![Visual Studio Marketplace](https://img.shields.io/visual-studio-marketplace/v/MGAlter.draft-script?label=VS%20Code%20Marketplace)](https://marketplace.visualstudio.com/items?itemName=MGAlter.draft-script)
 [![License: MPL-2.0](https://img.shields.io/badge/License-MPL--2.0-blue.svg)](./LICENSE)
 
 A VS Code extension for long-form fiction writing.
@@ -148,6 +148,10 @@ A sidebar panel that analyzes word and phrase frequency across the novel or curr
 DSM is the AI-powered part of Draft-Script. It analyzes chapter text using an LLM and extracts structured indexes -- characters, locations, threads, continuity, timeline, and more. Everything passes through a review step before anything is written to disk.
 
 All DSM features require an LLM provider (GitHub Copilot, OpenAI, Ollama, or Mock for offline testing). DSM can be disabled entirely with one setting -- all non-AI features remain unaffected.
+
+![Dashboard](resources/dashoard.png) ![Characters Dashboard](resources/characters-dashboard.png)![Timeline](resources/timeline.png)
+
+More Screenshot in [User Guide](./USER_GUIDE.md)
 
 ---
 

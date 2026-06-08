@@ -5,6 +5,8 @@ import { renderDashboard } from '../dsm/dashboard/dashboardEngine';
 import { loadDashboardData } from '../dsm/dashboard/dashboardData';
 import { layoutClass, layoutColumns } from '../dsm/dashboard/layout';
 import { DashboardProfileService } from '../dsm/dashboard/profileService';
+import { CELL_LINK_CSS, CELL_LINK_JS } from '../dsm/dashboard/widgetRenderer';
+import { navigateWithSelection } from '../utils/navigation';
 
 export class DsmDashboardProvider implements vscode.WebviewViewProvider {
   private view?: vscode.WebviewView;
@@ -24,8 +26,23 @@ export class DsmDashboardProvider implements vscode.WebviewViewProvider {
 
   resolveWebviewView(webviewView: vscode.WebviewView): void {
     this.view = webviewView;
-    webviewView.webview.options = { enableScripts: false };
+    webviewView.webview.options = { enableScripts: true };
+    webviewView.webview.onDidReceiveMessage(async (msg: Record<string, unknown>) => {
+      if (msg.command !== 'navigateToChapter') return;
+      await this.navigateToChapter(msg);
+    });
     webviewView.webview.html = this.buildHtml();
+  }
+
+  private async navigateToChapter(msg: Record<string, unknown>): Promise<void> {
+    const filePath = msg.filePath as string | undefined;
+    if (!filePath) return;
+    await navigateWithSelection({
+      filePath,
+      root:          this.getRootFolder(),
+      referenceText: (msg.referenceText as string | undefined)?.trim(),
+      title:         msg.title as string | undefined,
+    });
   }
 
   private indexesExist(): boolean {
@@ -62,10 +79,10 @@ function page(body: string): string {
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline';">
-<style>${CSS}</style>
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline';">
+<style>${CSS}${CELL_LINK_CSS}</style>
 </head>
-<body>${body}</body>
+<body>${body}<script>${CELL_LINK_JS}</script></body>
 </html>`;
 }
 

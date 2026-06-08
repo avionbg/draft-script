@@ -202,7 +202,7 @@ export async function runPrompt(
       const content = formatResultDoc(rendered, ctx, result, elapsed);
       const uri     = resultProvider.set(rendered.promptId, content);
 
-      await vscode.commands.executeCommand('markdown.showPreviewToSide', uri);
+      await vscode.commands.executeCommand('markdown.showLockedPreviewToSide', uri);
     }
   );
 }
@@ -277,7 +277,7 @@ export async function runAndSavePrompt(
     const rel    = path.relative(ctx.chapterPath ? path.dirname(ctx.chapterPath) : ctx.rootFolder, savedPath);
     const choice = await vscode.window.showInformationMessage(`Saved: ${rel}`, 'Open Preview', 'Open File');
     if (choice === 'Open Preview') {
-      await vscode.commands.executeCommand('markdown.showPreviewToSide', vscode.Uri.file(savedPath));
+      await vscode.commands.executeCommand('markdown.showLockedPreviewToSide', vscode.Uri.file(savedPath));
     } else if (choice === 'Open File') {
       await vscode.window.showTextDocument(vscode.Uri.file(savedPath));
     }

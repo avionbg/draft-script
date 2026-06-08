@@ -29,8 +29,8 @@ type Renderer = (data: Record<string, unknown>[], view: ViewConfig) => string;
 const RENDERERS: Record<ViewType, Renderer> = {
   'metric':       renderMetric,
   'list':         renderList,
-  'warning-list': renderWarningList,
-  'status-list':  renderWarningList,
+  'warning-list': renderLinkedWarningList,
+  'status-list':  renderLinkedWarningList,
   'table':        renderTable,
   'bar-list':     renderBarList,
   'timeline':     renderTimeline,
@@ -93,11 +93,17 @@ function renderList(data: Record<string, unknown>[], view: ViewConfig): string {
   const fields = visibleFields(view);
   return data.map(item => {
     const titleField    = view.itemTitleField    ? { key: view.itemTitleField }    : fields[0];
-    const subtitleField = view.itemSubtitleField ? { key: view.itemSubtitleField } : fields[1];
-    const title    = titleField    ? renderFieldText(item, titleField)    : '';
-    const subtitle = subtitleField ? renderFieldText(item, subtitleField) : '';
+    const subtitleFields = view.itemSubtitleField
+      ? [{ key: view.itemSubtitleField }]
+      : fields.slice(1);
+    const title    = titleField    ? renderFieldHtml(item, titleField, 'list-title') : '';
+    const subtitle = subtitleFields
+      .map(f => ({ text: renderFieldText(item, f), html: renderFieldHtml(item, f, 'list-sub dim') }))
+      .filter(v => v.text !== '-')
+      .map(v => v.html)
+      .join('&nbsp;&nbsp;');
     return `<div class="list-row">
-  <span class="list-title">${esc(title)}</span>${subtitle ? `<span class="list-sub dim">${esc(subtitle)}</span>` : ''}
+  ${title || '<span class="list-title"></span>'}${subtitle}
 </div>`;
   }).join('');
 }
@@ -122,6 +128,35 @@ function renderWarningList(data: Record<string, unknown>[], view: ViewConfig): s
   <span class="warn-icon warn-${esc(severity)}">${icon}</span>
   <span class="warn-label" title="${esc(tooltip)}">${esc(label)}</span>
   ${meta ? `<span class="warn-meta dim">${meta}</span>` : ''}
+</div>`;
+  }).join('');
+}
+
+function renderLinkedWarningList(data: Record<string, unknown>[], view: ViewConfig): string {
+  if (!data.length) {
+    return `<div class="ok">&#10003;&nbsp;${esc(view.emptyMessage ?? 'None')}</div>`;
+  }
+  const fields = visibleFields(view);
+  const primary = fields[0];
+  const metas = fields.slice(1);
+
+  return data.map(item => {
+    const label = primary ? renderFieldText(item, primary) : '';
+    const tooltip = primary?.tooltipField ? String(item[primary.tooltipField] ?? label) : label;
+    const labelHtml = primary
+      ? renderFieldHtml(item, primary, 'warn-label', tooltip)
+      : '<span class="warn-label"></span>';
+    const meta = metas
+      .map(f => ({ text: renderFieldText(item, f), html: renderFieldHtml(item, f, `warn-meta ${f.className ?? 'dim'}`) }))
+      .filter(v => v.text !== '-')
+      .map(v => v.html)
+      .join('&nbsp;&nbsp;');
+    const severity = rowSeverity(item, view);
+    const icon = rowIcon(item, view, severity);
+    return `<div class="warning-row">
+  <span class="warn-icon warn-${esc(severity)}">${icon}</span>
+  ${labelHtml}
+  ${meta}
 </div>`;
   }).join('');
 }
@@ -440,6 +475,29 @@ function visibleFields(view: ViewConfig): FieldConfig[] {
 
 function emptyMsg(view: ViewConfig): string {
   return `<em class="dim">${esc(view.emptyMessage ?? 'none')}</em>`;
+}
+
+function renderFieldHtml(
+  item: Record<string, unknown>,
+  field: FieldConfig,
+  className: string,
+  tooltip?: string,
+): string {
+  const text = renderFieldText(item, field);
+  const classes = [className, field.className].filter(Boolean).join(' ');
+  const title = tooltip ?? text;
+
+  if (field.isLink) {
+    const fp  = String(item[`_${field.key}_fp`]    ?? '');
+    const ttl = String(item[`_${field.key}_title`] ?? '');
+    const ref = String(item[`_${field.key}_ref`]   ?? '');
+    if (fp) {
+      const dataRef = ref ? ` data-ref="${esc(ref)}"` : '';
+      return `<button class="cell-link ${esc(classes)}" onclick="navigate(this)" data-fp="${esc(fp)}" data-title="${esc(ttl)}"${dataRef} title="${esc(ttl || title)}">${esc(text)}</button>`;
+    }
+  }
+
+  return `<span class="${esc(classes)}" title="${esc(title)}">${esc(text)}</span>`;
 }
 
 function formatNum(n: number): string {

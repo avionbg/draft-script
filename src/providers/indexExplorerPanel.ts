@@ -140,6 +140,19 @@ export class IndexExplorerPanel {
             break;
           }
 
+          case 'threadReviewAction': {
+            const id = msg.id as string;
+            const patch = msg.patch as Partial<IndexOverride>;
+            overrides.writeIndex('threads', id, patch);
+            panel.webview.postMessage({
+              command:   'overrideSaved',
+              indexName: 'threads',
+              id,
+              override:  overrides.readIndex('threads')[id] ?? {},
+            });
+            break;
+          }
+
           case 'openCanonEditor': {
             vscode.commands.executeCommand('draftScript.dsmOpenCanonEditor');
             break;
@@ -484,13 +497,29 @@ body {
 /* Full panels (Threads / Timeline / Continuity) */
 .full-panel { flex: 1; overflow-y: auto; padding: 16px 24px; display: flex; flex-direction: column; }
 .card-list { display: flex; flex-direction: column; }
+.review-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  margin-bottom: 10px;
+  border: 1px solid var(--vscode-widget-border);
+  background: rgba(128,128,128,0.05);
+  border-radius: 4px;
+  flex-wrap: wrap;
+}
+.review-count { font-weight: 600; margin-right: auto; }
+.review-hint { opacity: 0.55; font-size: 0.86em; }
+.review-empty { padding: 28px 0; opacity: 0.55; text-align: center; }
 .thread-card { padding: 12px 0; border-bottom: 1px solid var(--vscode-widget-border); }
 .thread-card:last-child { border-bottom: none; }
+.thread-card.review-focus { background: rgba(128,128,128,0.05); margin-left: -10px; margin-right: -10px; padding-left: 10px; padding-right: 10px; border-radius: 4px; }
 .thread-header { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; margin-bottom: 5px; }
 .thread-title { font-weight: 600; flex: 1; min-width: 120px; }
 .thread-desc { font-size: 0.9em; opacity: 0.65; line-height: 1.45; margin-bottom: 6px; }
 .thread-appearances { display: flex; align-items: center; flex-wrap: wrap; gap: 3px; }
 .thread-appearances-label { font-size: 0.78em; text-transform: uppercase; letter-spacing: 0.05em; opacity: 0.5; margin-right: 4px; }
+.review-reason { font-size: 0.84em; opacity: 0.68; margin-top: 4px; }
 /* Override edit section */
 .ovr-section {
   margin-top: 10px;
@@ -526,6 +555,7 @@ body {
 }
 .ovr-notes:focus { outline: 1px solid var(--vscode-focusBorder); }
 .ovr-actions { display: flex; gap: 6px; margin-top: 8px; align-items: center; }
+.review-actions { display: flex; gap: 6px; margin-top: 8px; align-items: center; flex-wrap: wrap; }
 .ovr-note-display { font-size: 0.88em; color: var(--vscode-foreground); opacity: 0.7; line-height: 1.45; font-style: italic; margin-top: 4px; }
 /* Toggle edit button */
 .btn-toggle-edit {
@@ -541,6 +571,17 @@ body {
   margin-left: auto;
 }
 .btn-toggle-edit:hover { opacity: 1; }
+.btn-review {
+  font-size: 0.78em;
+  padding: 3px 9px;
+  cursor: pointer;
+  background: var(--vscode-button-secondaryBackground, transparent);
+  border: 1px solid var(--vscode-widget-border);
+  border-radius: 3px;
+  color: var(--vscode-foreground);
+  font-family: inherit;
+}
+.btn-review:hover { background: var(--vscode-list-hoverBackground); }
 /* Timeline */
 .timeline-group { margin-bottom: 14px; }
 .tl-chapter-hd {
@@ -586,6 +627,7 @@ body {
 
 <!-- Threads panel -->
 <div id="threadsPanel" class="hidden full-panel">
+  <div id="threadReviewBar"></div>
   <div class="card-list" id="threadsList"></div>
 </div>
 
@@ -629,6 +671,8 @@ var FULL_CATS   = ['threads', 'timeline', 'continuity'];
 var currentCat  = 'characters';
 var filterText  = '';
 var selectedId  = null;
+var threadReviewOnly = false;
+var threadReviewCursor = 0;
 
 // Messages from extension
 window.addEventListener('message', function(e) {
@@ -977,6 +1021,63 @@ function effectiveThread(t) {
   };
 }
 
+function isThreadReview(t, et) {
+  return !et.hidden && (!!et.needsReview || !!et.suggestedStatus || et.status === 'uncertain');
+}
+
+function threadReviewReasons(t, et) {
+  var reasons = [];
+  if (et.status === 'uncertain') reasons.push('uncertain status');
+  if (et.suggestedStatus) reasons.push('suggested ' + et.suggestedStatus);
+  if (et.needsReview) reasons.push('needs review');
+  if (typeof t.confidence === 'number' && t.confidence < 0.7) reasons.push('low confidence');
+  if (t.lastUpdateType === 'reopened') reasons.push('reopened');
+  return reasons.filter(function(v, i, arr) { return arr.indexOf(v) === i; });
+}
+
+function getThreadById(id) {
+  return threads.find(function(t) { return t.id === id; });
+}
+
+function threadReviewItems() {
+  return threads.filter(function(t) { return isThreadReview(t, effectiveThread(t)); });
+}
+
+function renderThreadReviewBar() {
+  var bar = document.getElementById('threadReviewBar');
+  if (!bar) return;
+  var count = threadReviewItems().length;
+  var filterLabel = threadReviewOnly ? 'Show all threads' : 'Show only review';
+  bar.innerHTML =
+    '<div class="review-bar">' +
+      '<span class="review-count">' + count + ' need review</span>' +
+      '<span class="review-hint">Review uncertain threads and suggested lifecycle changes.</span>' +
+      '<button class="btn-review" onclick="toggleThreadReviewOnly()">' + filterLabel + '</button>' +
+      '<button class="btn-review" onclick="nextThreadReview()">Next</button>' +
+    '</div>';
+}
+
+function toggleThreadReviewOnly() {
+  threadReviewOnly = !threadReviewOnly;
+  threadReviewCursor = 0;
+  renderThreads();
+}
+
+function nextThreadReview() {
+  var ids = threadReviewItems().map(function(t) { return t.id; });
+  if (!ids.length) return;
+  if (!threadReviewOnly) threadReviewOnly = true;
+  renderThreads();
+  var id = ids[threadReviewCursor % ids.length];
+  threadReviewCursor = (threadReviewCursor + 1) % ids.length;
+  var card = document.getElementById('card-' + id);
+  if (card) {
+    card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    card.classList.add('review-focus');
+    setTimeout(function() { card.classList.remove('review-focus'); }, 1400);
+  }
+}
+
 function effectiveContinuity(c) {
   var ovr = (allIdxOverrides['continuity'] || {})[c.id] || {};
   return {
@@ -993,13 +1094,25 @@ function effectiveContinuity(c) {
 function renderThreads() {
   var list = document.getElementById('threadsList');
   if (!list) return;
+  renderThreadReviewBar();
   if (!threads || !threads.length) {
     list.innerHTML = '<div style="padding:32px;opacity:0.5;text-align:center;">No threads indexed yet.</div>';
     return;
   }
-  list.innerHTML = threads.map(function(t) {
+  var visibleThreads = threads.filter(function(t) {
+    var et = effectiveThread(t);
+    if (et.hidden) return false;
+    return !threadReviewOnly || isThreadReview(t, et);
+  });
+  if (!visibleThreads.length) {
+    list.innerHTML = '<div class="review-empty">' + (threadReviewOnly ? 'No threads need review.' : 'No visible threads indexed yet.') + '</div>';
+    return;
+  }
+  list.innerHTML = visibleThreads.map(function(t) {
     var et   = effectiveThread(t);
     if (et.hidden) return '';
+    var needsReview = isThreadReview(t, et);
+    var reason = threadReviewReasons(t, et).join(' | ');
     var lastDesc = et.appearances.length ? et.appearances[et.appearances.length - 1].description : '';
     var chLinks  = et.appearances.map(function(a) {
       var info   = chapterMap[a.chapterId];
@@ -1021,11 +1134,14 @@ function renderThreads() {
         '<span class="badge badge-' + esc(et.status) + '">' + esc(et.status) + '</span>' +
         (et.suggestedStatus ? '<span class="badge badge-uncertain">suggested: ' + esc(et.suggestedStatus) + '</span>' : '') +
         (et.needsReview ? '<span class="badge badge-changed">review</span>' : '') +
+        (needsReview ? '<button class="btn-review" onclick="toggleReviewSection(\\'' + esc(t.id) + '\\')">Review</button>' : '') +
         '<button class="btn-toggle-edit" onclick="toggleOvrSection(\\'' + esc(t.id) + '\\')">&hellip;</button>' +
       '</div>' +
+      (reason ? '<div class="review-reason">Review: ' + esc(reason) + '</div>' : '') +
       (lastDesc ? '<div class="thread-desc">' + esc(lastDesc) + '</div>' : '') +
       '<div class="thread-appearances"><span class="thread-appearances-label">Ch:</span>' + chLinks + '</div>' +
       (et.notes ? '<div class="ovr-note-display">' + esc(et.notes) + '</div>' : '') +
+      renderThreadReviewSection(t, et) +
       '<div class="ovr-section hidden" id="ovr-' + esc(t.id) + '">' +
         '<div class="ovr-row">' +
           '<span class="ovr-label">Status</span>' +
@@ -1043,8 +1159,37 @@ function renderThreads() {
   }).filter(Boolean).join('');
 }
 
+function renderThreadReviewSection(t, et) {
+  if (!isThreadReview(t, et)) return '';
+  var id = esc(t.id);
+  return '<div class="ovr-section hidden" id="review-' + id + '">' +
+    '<div class="ovr-row">' +
+      '<span class="ovr-label">Decision</span>' +
+      '<select class="ovr-status" id="review-status-' + id + '">' + getThreadStatusOptions(et.status === 'uncertain' ? 'active' : et.status) + '</select>' +
+      '<button class="btn btn-secondary" onclick="applyThreadReviewStatus(\\'' + id + '\\')">Apply status</button>' +
+    '</div>' +
+    '<div class="ovr-row"><span class="ovr-label">Notes</span></div>' +
+    '<textarea class="ovr-notes" id="review-notes-' + id + '" placeholder="Review notes&hellip;">' + esc(et.notes) + '</textarea>' +
+    '<div class="review-actions">' +
+      (et.suggestedStatus ? '<button class="btn btn-secondary" onclick="threadReviewAction(\\'' + id + '\\',\\'confirm\\')">Confirm suggestion</button>' : '') +
+      (et.suggestedStatus ? '<button class="btn btn-secondary" onclick="threadReviewAction(\\'' + id + '\\',\\'reject\\')">Reject suggestion</button>' : '') +
+      '<button class="btn btn-secondary" onclick="threadReviewAction(\\'' + id + '\\',\\'open\\')">Set Open</button>' +
+      '<button class="btn btn-secondary" onclick="threadReviewAction(\\'' + id + '\\',\\'active\\')">Set Active</button>' +
+      '<button class="btn btn-secondary" onclick="threadReviewAction(\\'' + id + '\\',\\'resolved\\')">Set Resolved</button>' +
+      '<button class="btn btn-secondary" onclick="threadReviewAction(\\'' + id + '\\',\\'changed\\')">Set Changed</button>' +
+      '<button class="btn btn-secondary" onclick="threadReviewAction(\\'' + id + '\\',\\'dismiss\\')">Dismiss</button>' +
+    '</div>' +
+    '<span class="save-notice" id="rn-' + id + '">Saved.</span>' +
+  '</div>';
+}
+
 function toggleOvrSection(id) {
   var el = document.getElementById('ovr-' + id);
+  if (el) el.classList.toggle('hidden');
+}
+
+function toggleReviewSection(id) {
+  var el = document.getElementById('review-' + id);
   if (el) el.classList.toggle('hidden');
 }
 
@@ -1055,6 +1200,46 @@ function saveThreadOvr(id) {
     patch: { status: status || undefined, notes: notes || undefined }});
   var el = document.getElementById('tn-' + id);
   if (el) { el.classList.add('show'); setTimeout(function() { el.classList.remove('show'); }, 2000); }
+}
+
+function applyThreadReviewStatus(id) {
+  var status = (document.getElementById('review-status-' + id) || {}).value || 'active';
+  threadReviewAction(id, status);
+}
+
+function threadReviewAction(id, action) {
+  var t = getThreadById(id);
+  if (!t) return;
+  var et = effectiveThread(t);
+  var notesEl = document.getElementById('review-notes-' + id);
+  var notes = notesEl ? notesEl.value : '';
+  var patch = {
+    needsReview: false,
+    suggestedStatus: null,
+    suggestedUpdateType: null,
+    suggestedResolutionType: null,
+    notes: notes || undefined
+  };
+
+  if (action === 'confirm') {
+    if (!et.suggestedStatus) return;
+    patch.status = et.suggestedStatus;
+  } else if (action === 'reject') {
+    patch.status = et.status === 'uncertain' ? undefined : et.status;
+  } else if (action === 'dismiss') {
+    patch.hidden = true;
+  } else {
+    patch.status = action;
+  }
+
+  if (patch.status === 'resolved') {
+    patch.resolvedChapter = t.lastSeenChapter || t.resolvedChapter || null;
+    patch.unresolvedQuestion = null;
+  } else if (patch.status === 'open' || patch.status === 'active') {
+    patch.resolvedChapter = null;
+  }
+
+  vscode.postMessage({ command: 'threadReviewAction', id: id, patch: patch });
 }
 
 function clearOvr(indexName, id) {

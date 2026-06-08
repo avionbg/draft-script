@@ -50,7 +50,7 @@ const RAW_WIDGETS: unknown[] = [
       fields: [
         { key: 'title' },
         { key: 'suggestedStatusLabel', fallback: '', className: 'dim' },
-        { key: 'lastSeenChapter', format: 'Ch. {value}', className: 'dim' },
+        { key: 'lastSeenChapter', format: 'Ch. {value}', className: 'dim', isLink: true },
       ],
     },
   },
@@ -85,7 +85,7 @@ const RAW_WIDGETS: unknown[] = [
       severityField: 'dormant',
       fields: [
         { key: 'title' },
-        { key: 'lastSeenChapter', format: 'Ch. {value}', className: 'dim' },
+        { key: 'lastSeenChapter', format: 'Ch. {value}', className: 'dim', isLink: true },
       ],
     },
   },
@@ -103,6 +103,7 @@ const RAW_WIDGETS: unknown[] = [
       fields: [
         { key: 'title' },
         { key: 'status', className: 'dim' },
+        { key: 'lastSeenChapter', format: 'Ch. {value}', className: 'dim', isLink: true },
       ],
     },
   },

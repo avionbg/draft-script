@@ -172,6 +172,22 @@ Each entity's editor pane shows an **Appearances** row listing every chapter whe
 
 The **Threads** tab lists indexed threads across the novel with their type, lifecycle status, suggested status, review flags, and chapter links. The **Timeline** tab shows all timeline events grouped by chapter — clicking a chapter heading opens that file. The **Continuity** tab lists all continuity items with their type, status, and the chapters where they were mentioned. All three are read-only views rebuilt automatically whenever the canon or analysis files change.
 
+**Thread review:** Dashboard widgets such as **Threads Needing Review** are triage lists. A thread appears there when DSM is uncertain, when confidence is low, when a resolved thread appears to reopen, or when the model suggests a status change such as `resolved` or `changed`.
+
+To review one:
+
+1. Open `DSM: Open Index Explorer`.
+2. Go to the **Threads** tab.
+3. Find the thread marked with the `review` badge or a `suggested:` badge.
+4. Use the chapter links to inspect the source context.
+5. Run the matching Command Palette action:
+   - `DSM: Confirm Suggested Resolution` accepts the suggested status and clears the review flag.
+   - `DSM: Reject Suggested Resolution` discards the suggestion and clears the review flag.
+   - `DSM: Mark Thread Resolved`, `DSM: Mark Thread Active`, or `DSM: Reopen Thread` sets the lifecycle state manually and clears the review flag.
+   - `DSM: Link to Parent Thread` assigns a parent thread when DSM found a sub-thread relationship.
+
+Thread review decisions are stored as overrides in `.draft-script/overrides/` and indexes are rebuilt after each action.
+
 ![Threads](resources/threads.png) ![Continuity](resources/continuity.png)
 
 **DSM Signals:** Signals are lightweight semantic labels attached to timeline events, thread updates, and continuity notes during analysis. They track recurring narrative patterns across the novel — things like `knowledge_transfer`, `autonomy`, or `institution_seed`. Unlike entities, signals are not characters or places; they are thematic markers you define.
@@ -533,6 +549,12 @@ Files are sorted alphanumerically, so a numeric prefix (`chapter-01`, `chapter-0
 | *Draft-Script: Reload Dashboards* | Reload dashboard profiles and refresh open dashboard panels |
 | *Draft-Script: Open Dashboard Folder* | Open `.draft-script/dashboards/` |
 | *DSM: Regenerate Indexes* | Rebuild all indexes from existing analysis files |
+| *DSM: Confirm Suggested Resolution* | Accept a model-suggested thread status and clear its review flag |
+| *DSM: Reject Suggested Resolution* | Discard a model-suggested thread status and clear its review flag |
+| *DSM: Mark Thread Resolved* | Manually mark a thread resolved and clear its review flag |
+| *DSM: Reopen Thread* | Manually reopen a thread and clear its review flag |
+| *DSM: Mark Thread Active* | Manually mark a thread active and clear its review flag |
+| *DSM: Link to Parent Thread* | Link a thread to a broader parent thread |
 | *DSM: Preview Prompt* | Build a prompt and open a read-only preview showing context blocks, token estimates, and the full rendered prompt |
 | *DSM: Copy Prompt to Clipboard* | Build a prompt and copy it to the clipboard — for use with external tools like ChatGPT, Claude, or Gemini |
 | *DSM: Run Prompt* | Build and send a prompt to the configured LLM; result opens in a tab beside the chapter |

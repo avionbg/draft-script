@@ -2,8 +2,9 @@
   "name": "draft-script",
   "displayName": "Draft-Script",
   "description": "A comprehensive writing environment for authors creating long-form books and novels in Markdown.",
-  "version": "0.2.6",
+  "version": "0.2.8",
   "publisher": "MGAlter",
+  "icon": "resources/book-icon.png",
   "engines": {
     "vscode": "^1.90.0"
   },
@@ -18,15 +19,15 @@
   ],
   "keywords": [
     "markdown",
-    "novel",
-    "writing",
-    "author",
-    "fiction",
-    "book",
+    "manuscript",
+    "novel writing",
+    "story tracking",
+    "continuity",
+    "timeline",
     "storytelling",
-    "narrative",
-    "llm",
-    "creative writing"
+    "character tracking",
+    "creative writing",
+    "writer tools"
   ],
   "activationEvents": [
     "onLanguage:markdown",
@@ -100,6 +101,11 @@
         "command": "draftScript.addChapter",
         "title": "Draft-Script: Add Chapter",
         "icon": "$(add)"
+      },
+      {
+        "command": "draftScript.copyChapterToClipboard",
+        "title": "Copy to Clipboard",
+        "icon": "$(copy)"
       },
       {
         "command": "draftScript.dsmAnalyzeText",
@@ -415,7 +421,7 @@
         {
           "command": "draftScript.dsmMarkChapterScanned",
           "when": "view == draftScript.navigator && viewItem == draftScriptHeading && draftScript.llmEnabled",
-          "group": "dsmScan@1"
+          "group": "zz_markScanned@1"
         },
         {
           "command": "draftScript.dsmAnalyzeChapter",
@@ -446,6 +452,11 @@
           "command": "draftScript.runAndSavePrompt",
           "when": "view == draftScript.navigator && (viewItem == draftScriptFile || viewItem == draftScriptHeading) && draftScript.llmEnabled",
           "group": "dsm@6"
+        },
+        {
+          "command": "draftScript.copyChapterToClipboard",
+          "when": "view == draftScript.navigator && (viewItem == draftScriptFile || viewItem == draftScriptHeading)",
+          "group": "zy_copy@1"
         }
       ],
       "commandPalette": [

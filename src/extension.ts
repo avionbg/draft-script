@@ -27,6 +27,7 @@ import { previewPrompt, copyPrompt, runPrompt, runAndSavePrompt } from './comman
 import { runThreadAction } from './commands/threadActions';
 import { openDashboard, openDashboardFolder, reloadDashboards } from './commands/dashboardCommands';
 import { inspectChapterTime, inspectTimeRange, inspectCurrentChapterTime } from './commands/timeInspector';
+import { copyChapterToClipboard } from './commands/copyChapter';
 import { StoryNavigatorPanel } from './providers/storyNavigatorPanel';
 import { PromptRegistry }          from './dsm/promptRunner/promptRegistry';
 import { VirtualDocumentProvider } from './providers/promptResultProvider';
@@ -441,6 +442,9 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand('draftScript.renumberChapters', async () => {
       await renumberChapters(getNovelFolder());
       navigatorProvider.setNovelFolder(getNovelFolder());
+    }),
+    vscode.commands.registerCommand('draftScript.copyChapterToClipboard', (item) => {
+      copyChapterToClipboard(item);
     })
   );
 
