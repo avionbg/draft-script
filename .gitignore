@@ -5,3 +5,4 @@ out/
 .bak/
 .vscode/
 *.vsix
+/.draft-script
