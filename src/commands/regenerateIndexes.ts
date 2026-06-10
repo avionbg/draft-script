@@ -53,6 +53,7 @@ export async function regenerateIndexes(getRootFolder: () => string): Promise<bo
     async () => {
       const store = new AnalysisStore(root);
       const canon = new CanonManager(root);
+      const overrides = new OverrideStore(root);
 
       if (choice.mode === 'clear') {
         clearCanonEntries(root);
@@ -67,11 +68,11 @@ export async function regenerateIndexes(getRootFolder: () => string): Promise<bo
       // For 'clear' mode: canon is fresh so mergeUncertain has nothing to match against
       const canMerge = choice.mode === 'clear' ? false : mergeUncertain;
       for (const analysis of store.readAll()) {
-        applyAutoApproval(analysis, canon, minCertainty, canMerge);
+        applyAutoApproval(analysis, canon, minCertainty, canMerge, overrides);
         store.write(analysis);
       }
 
-      const builder = new IndexBuilder(root, store, canon, new OverrideStore(root));
+      const builder = new IndexBuilder(root, store, canon, overrides);
       builder.buildAll();
     }
   );

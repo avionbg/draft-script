@@ -132,7 +132,7 @@ Attach private notes to any selected passage in the manuscript.
 
 #### Repetition
 
-A sidebar panel that analyzes word and phrase frequency across the novel or current chapter. Helps identify overused words and repeated phrasing. Click any phrase to jump to its next occurrence in the text.
+A sidebar panel that analyzes word and phrase frequency across the novel or current chapter. Helps identify overused words and repeated phrasing. Click any phrase to jump to its next occurrence in the text. The panel can be locked to novel-wide analysis, and repeated phrases can be sent through a review-first line-edit workflow with optional diffs before applying changes.
 
 ---
 
@@ -140,6 +140,7 @@ A sidebar panel that analyzes word and phrase frequency across the novel or curr
 
 - **Smart Dashes** -- typing `--` automatically converts to an em-dash. Can be disabled via `draftScript.enableSmartDashes`.
 - **Auto-Refresh** -- the Navigator, Statistics, Characters, Repetition, and Dashboard panels refresh automatically when any Markdown file changes.
+- **Export Build** -- build the current manuscript into `exports/manuscript.md` without any external tools. Optional DOCX, EPUB, HTML, and PDF export uses an external Pandoc installation; PDF may also require a TeX/PDF engine such as `xelatex`.
 
 ---
 

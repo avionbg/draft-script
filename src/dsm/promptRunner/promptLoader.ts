@@ -2,9 +2,9 @@ import * as fs   from 'fs';
 import * as path  from 'path';
 import { PromptDefinition, PromptScope, PromptProvider, PromptOutputFormat, PromptOutputConfig, PromptContextBlockId, PromptLimits, PromptWindowConfig, VisibilityMode } from './types';
 
-const RESERVED_FILENAMES = new Set(['dsm-analysis.md']);
 const PROMPTS_DIR = path.join('.draft-script', 'prompts');
 const BUNDLED_PROMPTS_DIR = 'prompts';
+const INTERNAL_PROMPT_FIELD = 'draft-script-internal';
 
 // ─── YAML frontmatter parser ──────────────────────────────────────────────────
 
@@ -92,6 +92,7 @@ const VALID_OUTPUTS     = new Set<PromptOutputFormat>(['markdown', 'json']);
 const VALID_VISIBILITY  = new Set<VisibilityMode>(['all', 'upToChapter', 'previousChapters', 'currentChapterOnly']);
 const VALID_CONTEXT_IDS = new Set<PromptContextBlockId>([
   'selectedText', 'chapterText', 'chapterMeta', 'chapterSummary',
+  'overview', 'previousChapterOverview', 'nextChapterOverview',
   'characters', 'locations', 'objects', 'groups',
   'activeThreads', 'dormantThreads', 'activeContinuity',
   'signals', 'timeline', 'references', 'projectInstructions',
@@ -179,11 +180,15 @@ function parsePromptFile(filePath: string): PromptDefinition | null {
 
   const parsed = parseFrontmatter(text);
   if (!parsed) {
+    // Legacy DSM analysis prompt files predate prompt frontmatter and are read
+    // directly by the DSM analyzer, not by the generic Prompt Runner registry.
+    if (path.basename(filePath) === 'dsm-analysis.md') return null;
     console.warn(`[PromptRunner] No frontmatter found in: ${filePath}`);
     return null;
   }
 
   const { fm, body } = parsed;
+  if (typeof fm[INTERNAL_PROMPT_FIELD] === 'string') return null;
 
   const id    = typeof fm['id']    === 'string' ? fm['id'].trim()    : '';
   const title = typeof fm['title'] === 'string' ? fm['title'].trim() : '';
@@ -256,7 +261,6 @@ function loadPromptDir(dir: string, map: Map<string, PromptDefinition>, source: 
 
   for (const entry of entries.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }))) {
     if (!entry.isFile() || !entry.name.endsWith('.md')) continue;
-    if (RESERVED_FILENAMES.has(entry.name)) continue;
 
     const def = parsePromptFile(path.join(dir, entry.name));
     if (!def) continue;

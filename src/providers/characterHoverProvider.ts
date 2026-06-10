@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import { CanonCharacter, loadCanonCharacters, buildCanonRegex } from '../dsm/canonCharacters';
+import { DEFAULT_INFLECTION_SUFFIXES, MentionOptions } from '../utils/markdownParser';
 
 export class CharacterHoverProvider implements vscode.HoverProvider {
   private _cache: CanonCharacter[] | undefined;
@@ -13,6 +14,15 @@ export class CharacterHoverProvider implements vscode.HoverProvider {
   private getCharacters(): CanonCharacter[] {
     if (!this._cache) this._cache = loadCanonCharacters(this.getRootFolder());
     return this._cache;
+  }
+
+  private mentionOptions(): MentionOptions {
+    const cfg = vscode.workspace.getConfiguration('draftScript');
+    return {
+      inflections: cfg.get<boolean>('characterInflections', false),
+      suffixes: cfg.get<string[]>('inflectionSuffixes', DEFAULT_INFLECTION_SUFFIXES),
+      feminineIn: cfg.get<boolean>('inflectionFeminineIn', false),
+    };
   }
 
   provideHover(
@@ -32,7 +42,7 @@ export class CharacterHoverProvider implements vscode.HoverProvider {
     if (word.length < 2) return;
 
     for (const char of this.getCharacters()) {
-      const re = buildCanonRegex(char.name, char.aliases);
+      const re = buildCanonRegex(char.name, char.aliases, this.mentionOptions());
       re.lastIndex = 0;
       if (re.test(word)) {
         const md = new vscode.MarkdownString();

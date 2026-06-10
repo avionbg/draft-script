@@ -3,6 +3,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { getAllMarkdownFiles } from '../utils/markdownParser';
 import { CanonCharacter, loadCanonCharacters, buildCanonRegex } from '../dsm/canonCharacters';
+import { DEFAULT_INFLECTION_SUFFIXES, MentionOptions } from '../utils/markdownParser';
 
 interface Occurrence {
   file:   string;
@@ -85,6 +86,28 @@ export class CharactersWebviewProvider implements vscode.WebviewViewProvider {
     return this.getCanonCharacters().find(c => c.name === name);
   }
 
+  private mentionOptions(): MentionOptions {
+    const cfg = vscode.workspace.getConfiguration('draftScript');
+    return {
+      inflections: cfg.get<boolean>('characterInflections', false),
+      suffixes: cfg.get<string[]>('inflectionSuffixes', DEFAULT_INFLECTION_SUFFIXES),
+      feminineIn: cfg.get<boolean>('inflectionFeminineIn', false),
+    };
+  }
+
+  private manuscriptFiles(): string[] {
+    if (!this.novelFolder || !fs.existsSync(this.novelFolder)) return [];
+    const excluded = new Set<string>(
+      vscode.workspace.getConfiguration('draftScript').get<string[]>('navigatorExclude', [])
+    );
+    return getAllMarkdownFiles(this.novelFolder).filter(file => {
+      if (path.basename(file) === 'characters.md') return false;
+      const rel = path.relative(this.novelFolder, file);
+      const firstSegment = rel.split(path.sep)[0];
+      return !excluded.has(firstSegment);
+    });
+  }
+
   // ---------------------------------------------------------------------------
   // Chapter breakdown
   // ---------------------------------------------------------------------------
@@ -93,11 +116,9 @@ export class CharactersWebviewProvider implements vscode.WebviewViewProvider {
     if (!this.novelFolder || !fs.existsSync(this.novelFolder)) return [];
 
     const char = this.findCharByName(name);
-    const re   = buildCanonRegex(name, char?.aliases ?? []);
+    const re   = buildCanonRegex(name, char?.aliases ?? [], this.mentionOptions());
 
-    const files = getAllMarkdownFiles(this.novelFolder).filter(
-      f => path.basename(f) !== 'characters.md'
-    );
+    const files = this.manuscriptFiles();
     const result: ChapterBreakdown[] = [];
 
     for (const file of files) {
@@ -183,11 +204,9 @@ export class CharactersWebviewProvider implements vscode.WebviewViewProvider {
     if (!this.novelFolder || !fs.existsSync(this.novelFolder)) return [];
 
     const char = this.findCharByName(name);
-    const re   = buildCanonRegex(name, char?.aliases ?? []);
+    const re   = buildCanonRegex(name, char?.aliases ?? [], this.mentionOptions());
 
-    const files = getAllMarkdownFiles(this.novelFolder).filter(
-      f => path.basename(f) !== 'characters.md'
-    );
+    const files = this.manuscriptFiles();
     const results: Occurrence[] = [];
 
     for (const file of files) {
@@ -308,7 +327,7 @@ export class CharactersWebviewProvider implements vscode.WebviewViewProvider {
     }
 
     const char    = this.findCharByName(name);
-    const re      = buildCanonRegex(name, char?.aliases ?? []);
+    const re      = buildCanonRegex(name, char?.aliases ?? [], this.mentionOptions());
     const results: Occurrence[] = [];
 
     for (let li = headingLine; li < endLine; li++) {
@@ -329,14 +348,13 @@ export class CharactersWebviewProvider implements vscode.WebviewViewProvider {
 
   private getNovelContent(): string {
     if (!this.novelFolder || !fs.existsSync(this.novelFolder)) return '';
-    return getAllMarkdownFiles(this.novelFolder)
-      .filter(f => path.basename(f) !== 'characters.md')
+    return this.manuscriptFiles()
       .map(f => { try { return fs.readFileSync(f, 'utf-8'); } catch { return ''; } })
       .join('\n');
   }
 
   private countMentions(content: string, char: CanonCharacter): number {
-    const re = buildCanonRegex(char.name, char.aliases);
+    const re = buildCanonRegex(char.name, char.aliases, this.mentionOptions());
     return (content.match(re) ?? []).length;
   }
 

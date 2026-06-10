@@ -11,6 +11,7 @@ import { AnalysisStore } from '../dsm/analysisStore';
 import { IndexBuilder } from '../dsm/indexBuilder';
 import { SignalManager } from '../dsm/signalManager';
 import { OverrideStore } from '../dsm/overrideStore';
+import { openTextDocumentPreferVisible, selectAndReveal } from '../utils/navigation';
 
 // ---------------------------------------------------------------------------
 // Helpers shared with display
@@ -68,7 +69,7 @@ export class IndexExplorerPanel {
     const allCanonEntries: Record<string, (CanonEntry & { notes?: string })[]> = {};
     for (const cat of ENTITY_CATEGORIES) {
       const ovrs = overrides.readCanon(cat);
-      allCanonEntries[cat] = canonMgr.read(cat).map(e => composeCanonEntry(e, ovrs[e.id]));
+      allCanonEntries[cat] = canonMgr.readEffective(cat, ovrs).map(e => composeCanonEntry(e, ovrs[e.id]));
     }
 
     // Index overrides for all types
@@ -101,12 +102,11 @@ export class IndexExplorerPanel {
 
     const cfg      = vscode.workspace.getConfiguration('draftScript');
     const fontSize = cfg.get<number>('dsmReviewFontSize', 13);
-    const debug    = cfg.get<boolean>('debugMode', false);
 
     panel.webview.html = buildHtml(
       entityIndexes, allCanonEntries, allIndexOverrides,
       threads, timeline, continuity, chapterMap, refItems,
-      fontSize, debug,
+      fontSize,
     );
 
     panel.webview.onDidReceiveMessage(
@@ -168,9 +168,8 @@ export class IndexExplorerPanel {
             if (!filePath) break;
             try {
               const absPath = path.isAbsolute(filePath) ? filePath : path.join(root, filePath);
-              const uri     = vscode.Uri.file(absPath);
-              const doc     = await vscode.workspace.openTextDocument(uri);
-              const editor  = await vscode.window.showTextDocument(doc, { viewColumn: vscode.ViewColumn.One, preview: false });
+              const uri = vscode.Uri.file(absPath);
+              const { doc, editor } = await openTextDocumentPreferVisible(uri);
 
               let positioned = false;
 
@@ -216,8 +215,7 @@ export class IndexExplorerPanel {
                   if (hit) {
                     const pos    = doc.positionAt(hit.idx);
                     const endPos = doc.positionAt(hit.idx + hit.len);
-                    editor.selection = new vscode.Selection(pos, endPos);
-                    editor.revealRange(new vscode.Range(pos, endPos), vscode.TextEditorRevealType.InCenterIfOutsideViewport);
+                    selectAndReveal(editor, new vscode.Range(pos, endPos));
                     positioned = true;
                     break;
                   }
@@ -245,14 +243,12 @@ export class IndexExplorerPanel {
                     if (bestIdx >= 0) {
                       const startPos = doc.positionAt(bestIdx);
                       const endPos   = doc.positionAt(bestIdx + bestLen);
-                      editor.selection = new vscode.Selection(startPos, endPos);
-                      editor.revealRange(new vscode.Range(startPos, endPos), vscode.TextEditorRevealType.InCenterIfOutsideViewport);
+                      selectAndReveal(editor, new vscode.Range(startPos, endPos));
                       nameFound = true;
                     }
                   }
                   if (!nameFound) {
-                    editor.selection = new vscode.Selection(headingPos, headingPos);
-                    editor.revealRange(new vscode.Range(headingPos, headingPos), vscode.TextEditorRevealType.AtTop);
+                    selectAndReveal(editor, new vscode.Range(headingPos, headingPos), vscode.TextEditorRevealType.AtTop);
                   }
                 }
               }
@@ -283,7 +279,6 @@ function buildHtml(
   chapterMap:       Record<string, { number: number; title: string; filePath: string }>,
   refItems:         ReferenceIndexItem[],
   fontSize:         number,
-  debug:            boolean,
 ): string {
   const entityIdxJson   = JSON.stringify(entityIndexes).replace(/<\/script>/gi, '<\\/script>');
   const canonJson       = JSON.stringify(allCanonEntries).replace(/<\/script>/gi, '<\\/script>');

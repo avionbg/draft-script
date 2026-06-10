@@ -6,7 +6,7 @@ The Prompt Runner lets you define custom LLM prompts — developmental edit, bet
 
 ## How it works
 
-1. Create a `.md` file in `.draft-script/prompts/` (copy one from `examples/prompts/` to start).
+1. Create a `.md` file in `.draft-script/prompts/`, or run **DSM: Install Starter Prompts** to copy built-in starters into the project.
 2. Open any of the three commands from the Command Palette or by right-clicking a chapter heading in the Navigator.
 3. A QuickPick lists all available prompts. Pick one — DSM assembles the context blocks, renders the final prompt string, then performs the requested action.
 
@@ -206,6 +206,9 @@ Specify which blocks to include with the `context` list in the YAML header. If y
 | `chapterText` | Chapter Text | Full text of the selected chapter or section |
 | `selectedText` | Selected Text | Text selected in the editor (only with `scope: selection`) |
 | `chapterMeta` | Chapter Info | Chapter number, title, and filename |
+| `overview` | Chapter Overview | DSM overview for the selected chapter: summary, purpose, emotional beat, function, setup/payoff notes, focus areas, risks, and book impact |
+| `previousChapterOverview` | Previous Chapter Overview | DSM overview for the previous chapter, when available |
+| `nextChapterOverview` | Next Chapter Overview | DSM overview for the next chapter, when available |
 | `characters` | Characters | All indexed characters with last seen chapter and appearance count |
 | `locations` | Locations | All indexed locations with appearance count |
 | `objects` | Objects | All indexed objects with appearance count |
@@ -234,6 +237,9 @@ The prompt body supports `{{placeholder}}` substitution. Placeholders are replac
 | `{{chapterText}}` | Raw text of the chapter or section |
 | `{{selectedText}}` | Raw selected text (scope: selection) |
 | `{{chapterMeta}}` | Chapter number, title, filename as plain text |
+| `{{overview}}` | Chapter Overview block content only |
+| `{{previousChapterOverview}}` | Previous Chapter Overview block content only |
+| `{{nextChapterOverview}}` | Next Chapter Overview block content only |
 | `{{characters}}` | Characters block content only |
 | `{{locations}}` | Locations block content only |
 | `{{objects}}` | Objects block content only |
@@ -456,4 +462,4 @@ Template tokens:   1,000
       beta-reader-rules.md
 ```
 
-Starter prompts are in `examples/prompts/` in the extension folder. Copy whichever you want to `.draft-script/prompts/` and they appear in the QuickPick immediately.
+Starter prompts can be installed with **DSM: Install Starter Prompts**. Draft-Script copies them into `.draft-script/prompts/`, where you can edit them like any other project prompt. The repository also keeps example prompt files under `examples/prompts/` for reference.

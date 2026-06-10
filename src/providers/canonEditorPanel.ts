@@ -10,6 +10,7 @@ import { AnalysisStore } from '../dsm/analysisStore';
 import { IndexBuilder } from '../dsm/indexBuilder';
 import { SignalManager } from '../dsm/signalManager';
 import { OverrideStore } from '../dsm/overrideStore';
+import { openTextDocumentPreferVisible, selectAndReveal } from '../utils/navigation';
 
 // ---------------------------------------------------------------------------
 // Effective entry type (canon + override composed)
@@ -62,7 +63,8 @@ export class CanonEditorPanel {
     // Compose effective entries (canon + overrides)
     const allEntries: Record<string, EffectiveEntry[]> = {};
     for (const cat of ENTITY_CATEGORIES) {
-      allEntries[cat] = composeEntries(canonMgr.read(cat), overrides.readCanon(cat));
+      const ovrs = overrides.readCanon(cat);
+      allEntries[cat] = composeEntries(canonMgr.readEffective(cat, ovrs), ovrs);
     }
 
     const signals: Signal[] = sigMgr.read();
@@ -88,18 +90,23 @@ export class CanonEditorPanel {
 
     const refItems = readIndexArray<ReferenceIndexItem>(root, 'reference');
 
+    const activeEditor = vscode.window.activeTextEditor;
+    const openBesideManuscript =
+      activeEditor?.document.uri.scheme === 'file' &&
+      activeEditor.document.uri.fsPath.toLowerCase().endsWith('.md') &&
+      isInsidePath(activeEditor.document.uri.fsPath, root);
+
     const panel = vscode.window.createWebviewPanel(
       'dsmCanonEditor',
       'DSM Canon Editor',
-      vscode.ViewColumn.Active,
+      openBesideManuscript ? vscode.ViewColumn.Beside : vscode.ViewColumn.Active,
       { enableScripts: true, retainContextWhenHidden: true },
     );
 
     const cfg      = vscode.workspace.getConfiguration('draftScript');
     const fontSize = cfg.get<number>('dsmReviewFontSize', 13);
-    const debug    = cfg.get<boolean>('debugMode', false);
     panel.webview.html = buildHtml(
-      allEntries, signals, fontSize, debug,
+      allEntries, signals, fontSize,
       entityIndexes, entityIdxOverrides, chapterMap, refItems,
     );
 
@@ -119,29 +126,28 @@ export class CanonEditorPanel {
             panel.webview.postMessage({
               command:  'updated',
               category,
-              entries:  composeEntries(canonMgr.read(category), overrides.readCanon(category)),
+              entries:  composeEntries(canonMgr.readEffective(category, overrides.readCanon(category)), overrides.readCanon(category)),
               idxOverrides: overrides.readIndex(category),
               selectId: msg.id,
             });
             break;
           }
           case 'new': {
-            const entry = canonMgr.addEntry(category, {
-              id:          msg.id          as string,
-              name:        msg.name        as string,
+            const id = msg.id as string;
+            overrides.writeCanon(category, id, {
+              title:       msg.name        as string,
               aliases:     msg.aliases     as string[],
               description: msg.description as string,
+              notes:       (msg.notes as string | undefined) || undefined,
+              userCreated: true,
             });
-            if (msg.notes) {
-              overrides.writeCanon(category, entry.id, { notes: msg.notes as string });
-            }
             rebuildIndexes(root, store, canonMgr, overrides);
             panel.webview.postMessage({
               command:  'updated',
               category,
-              entries:  composeEntries(canonMgr.read(category), overrides.readCanon(category)),
+              entries:  composeEntries(canonMgr.readEffective(category, overrides.readCanon(category)), overrides.readCanon(category)),
               idxOverrides: overrides.readIndex(category),
-              selectId: entry.id,
+              selectId: id,
             });
             break;
           }
@@ -157,13 +163,13 @@ export class CanonEditorPanel {
             panel.webview.postMessage({
               command:  'updated',
               category,
-              entries:  composeEntries(canonMgr.read(category), overrides.readCanon(category)),
+              entries:  composeEntries(canonMgr.readEffective(category, overrides.readCanon(category)), overrides.readCanon(category)),
               idxOverrides: overrides.readIndex(category),
             });
             break;
           }
           case 'merge': {
-            const effectiveEntries = composeEntries(canonMgr.read(category), overrides.readCanon(category));
+            const effectiveEntries = composeEntries(canonMgr.readEffective(category, overrides.readCanon(category)), overrides.readCanon(category));
             const source = effectiveEntries.find(e => e.id === msg.sourceId);
             const target = effectiveEntries.find(e => e.id === msg.targetId);
             if (!source || !target) break;
@@ -189,7 +195,7 @@ export class CanonEditorPanel {
             panel.webview.postMessage({
               command:  'updated',
               category,
-              entries:  composeEntries(canonMgr.read(category), overrides.readCanon(category)),
+              entries:  composeEntries(canonMgr.readEffective(category, overrides.readCanon(category)), overrides.readCanon(category)),
               idxOverrides: overrides.readIndex(category),
               selectId: msg.targetId,
             });
@@ -208,9 +214,8 @@ export class CanonEditorPanel {
             if (!filePath) break;
             try {
               const absPath = path.isAbsolute(filePath) ? filePath : path.join(root, filePath);
-              const uri     = vscode.Uri.file(absPath);
-              const doc     = await vscode.workspace.openTextDocument(uri);
-              const editor  = await vscode.window.showTextDocument(doc, { viewColumn: vscode.ViewColumn.One, preview: false });
+              const uri = vscode.Uri.file(absPath);
+              const { doc, editor } = await openTextDocumentPreferVisible(uri);
 
               let positioned = false;
 
@@ -222,8 +227,7 @@ export class CanonEditorPanel {
                   const pos    = doc.positionAt(idx);
                   const endPos = doc.positionAt(idx + referenceText.length);
                   const range  = new vscode.Range(pos, endPos);
-                  editor.selection = new vscode.Selection(pos, endPos);
-                  editor.revealRange(range, vscode.TextEditorRevealType.InCenterIfOutsideViewport);
+                  selectAndReveal(editor, range);
                   positioned = true;
                 }
               }
@@ -238,8 +242,7 @@ export class CanonEditorPanel {
                     const pos    = doc.positionAt(idx);
                     const endPos = doc.positionAt(idx + snippet.length);
                     const range  = new vscode.Range(pos, endPos);
-                    editor.selection = new vscode.Selection(pos, endPos);
-                    editor.revealRange(range, vscode.TextEditorRevealType.InCenterIfOutsideViewport);
+                    selectAndReveal(editor, range);
                     positioned = true;
                   }
                 }
@@ -271,14 +274,12 @@ export class CanonEditorPanel {
                     if (bestIdx >= 0) {
                       const startPos = doc.positionAt(bestIdx);
                       const endPos   = doc.positionAt(bestIdx + bestLen);
-                      editor.selection = new vscode.Selection(startPos, endPos);
-                      editor.revealRange(new vscode.Range(startPos, endPos), vscode.TextEditorRevealType.InCenterIfOutsideViewport);
+                      selectAndReveal(editor, new vscode.Range(startPos, endPos));
                       nameFound = true;
                     }
                   }
                   if (!nameFound) {
-                    editor.selection = new vscode.Selection(headingPos, headingPos);
-                    editor.revealRange(new vscode.Range(headingPos, headingPos), vscode.TextEditorRevealType.AtTop);
+                    selectAndReveal(editor, new vscode.Range(headingPos, headingPos), vscode.TextEditorRevealType.AtTop);
                   }
                 }
               }
@@ -345,6 +346,11 @@ function rebuildIndexes(root: string, store: AnalysisStore, canonMgr: CanonManag
   try { new IndexBuilder(root, store, canonMgr, overrides).buildAll(); } catch { /* non-fatal */ }
 }
 
+function isInsidePath(filePath: string, root: string): boolean {
+  const rel = path.relative(root, filePath);
+  return !!rel && !rel.startsWith('..') && !path.isAbsolute(rel);
+}
+
 // ---------------------------------------------------------------------------
 // HTML
 // ---------------------------------------------------------------------------
@@ -353,7 +359,6 @@ function buildHtml(
   allEntries:          Record<string, EffectiveEntry[]>,
   signals:             Signal[],
   fontSize:            number,
-  debug:               boolean,
   entityIndexes:       Record<string, CharacterIndexItem[]>,
   entityIdxOverrides:  Record<string, Record<string, IndexOverride>>,
   chapterMap:          Record<string, { number: number; title: string; filePath: string }>,
@@ -374,28 +379,6 @@ function buildHtml(
   content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline';">
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
-.debug-bar {
-  font-family: var(--vscode-editor-font-family, monospace);
-  font-size: 11px;
-  padding: 3px 10px;
-  background: rgba(255,200,0,0.12);
-  border-bottom: 1px solid rgba(255,200,0,0.35);
-  color: var(--vscode-foreground);
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-shrink: 0;
-  flex-wrap: wrap;
-}
-.debug-bar b { color: #e8c33a; margin-right: 3px; }
-.debug-bar .dbg-ok  { color: #4ec94e; font-weight: 600; }
-.debug-bar .dbg-err { color: #e05252; font-weight: 600; }
-.debug-bar button {
-  font-size: 10px; padding: 1px 7px; cursor: pointer;
-  background: rgba(255,200,0,0.2); border: 1px solid rgba(255,200,0,0.5);
-  border-radius: 3px; color: var(--vscode-foreground); font-family: inherit;
-  margin-left: auto;
-}
 body {
   font-family: var(--vscode-font-family);
   font-size: ${fontSize}px;
@@ -823,8 +806,6 @@ body {
 </style>
 </head>
 <body>
-
-${debug ? `<div class="debug-bar" id="debugBar"><span class="dbg-err">&#9888; JS not running</span></div>` : ''}
 
 <div class="tab-bar">
   <button class="tab active" data-cat="characters" onclick="switchTab('characters')">Characters</button>
@@ -1499,24 +1480,6 @@ function wireSignalDrag() {
   });
 }
 
-// Init
-(function initDebugBar() {
-  var bar = document.getElementById('debugBar');
-  if (!bar) return;
-  try {
-    var cats = ['characters', 'locations', 'objects', 'groups'];
-    var counts = cats.map(function(c) {
-      return c + ':' + ((allEntries[c] || []).length);
-    }).join('  ');
-    bar.innerHTML =
-      '<span class="dbg-ok">&#10003; JS running</span>' +
-      '<span><b>entries</b>' + counts + '</span>' +
-      '<span><b>signals</b>' + signals.length + '</span>' +
-      '<button onclick="document.getElementById(\\'debugBar\\').style.display=\\'none\\'">hide</button>';
-  } catch(e) {
-    bar.innerHTML = '<span class="dbg-err">&#9888; init error: ' + String(e) + '</span>';
-  }
-})();
 renderList();
 </script>
 </body>

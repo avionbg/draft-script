@@ -48,6 +48,7 @@ export class IndexBuilder {
   ): void {
     const map      = new Map<string, CharacterIndexItem>();
     const canonOvrs = this.overrides ? this.overrides.readCanon(category) : {};
+    const effectiveCanon = this.canon.readEffective(category, canonOvrs);
 
     for (const chapter of chapters) {
       const entities = chapter[category] as ChapterEntity[];
@@ -55,7 +56,7 @@ export class IndexBuilder {
         const key  = e.canonId ?? e.id;
         let   item = map.get(key);
         if (!item) {
-          const canonEntry = e.canonId ? this.canon.findInCategory(category, e.name, e.aliases) : undefined;
+          const canonEntry = e.canonId ? effectiveCanon.find(c => c.id === e.canonId) : undefined;
           const canonOvr   = canonEntry ? (canonOvrs[canonEntry.id] ?? {}) : {};
           item = {
             id:                    key,
@@ -85,6 +86,18 @@ export class IndexBuilder {
           });
         }
       }
+    }
+
+    for (const entry of effectiveCanon) {
+      if (map.has(entry.id)) continue;
+      map.set(entry.id, {
+        id:                    entry.id,
+        name:                  entry.name,
+        aliases:               entry.aliases,
+        canonDescription:      entry.description,
+        appearances:           [],
+        generatedDescriptions: [],
+      });
     }
 
     this.write(category, [...map.values()]);

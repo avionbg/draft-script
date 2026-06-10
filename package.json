@@ -2,9 +2,9 @@
   "name": "draft-script",
   "displayName": "Draft-Script",
   "description": "A comprehensive writing environment for authors creating long-form books and novels in Markdown.",
-  "version": "0.2.8",
+  "version": "0.2.9",
   "publisher": "MGAlter",
-  "icon": "resources/book-icon.png",
+  "icon": "resources/dsm-icon.png",
   "engines": {
     "vscode": "^1.90.0"
   },
@@ -62,6 +62,18 @@
       {
         "command": "draftScript.suggestLineEditsForRepetitionChapter",
         "title": "Draft-Script: Suggest Line Edits for This Chapter"
+      },
+      {
+        "command": "draftScript.buildManuscriptMarkdown",
+        "title": "Draft-Script: Build Manuscript Markdown"
+      },
+      {
+        "command": "draftScript.exportWithPandoc",
+        "title": "Draft-Script: Export with Pandoc..."
+      },
+      {
+        "command": "draftScript.configurePandocPath",
+        "title": "Draft-Script: Configure Pandoc Path"
       },
       {
         "command": "draftScript.openAtLine",
@@ -254,6 +266,11 @@
         "command": "draftScript.runPrompt",
         "title": "DSM: Run Prompt",
         "icon": "$(zap)"
+      },
+      {
+        "command": "draftScript.installStarterPrompts",
+        "title": "DSM: Install Starter Prompts",
+        "icon": "$(cloud-download)"
       },
       {
         "command": "draftScript.runAndSavePrompt",
@@ -508,7 +525,11 @@
         { "command": "draftScript.previewPrompt",        "when": "draftScript.llmEnabled" },
         { "command": "draftScript.copyPrompt",           "when": "draftScript.llmEnabled" },
         { "command": "draftScript.runPrompt",            "when": "draftScript.llmEnabled" },
-        { "command": "draftScript.runAndSavePrompt",     "when": "draftScript.llmEnabled" }
+        { "command": "draftScript.installStarterPrompts", "when": "draftScript.llmEnabled" },
+        { "command": "draftScript.runAndSavePrompt",     "when": "draftScript.llmEnabled" },
+        { "command": "draftScript.buildManuscriptMarkdown" },
+        { "command": "draftScript.exportWithPandoc" },
+        { "command": "draftScript.configurePandocPath" }
       ]
     },
     "configuration": {
@@ -673,12 +694,6 @@
           "default": 180,
           "description": "Timeout in seconds for DSM LLM requests. Increase if long chapters time out. Default: 180 (3 minutes)."
         },
-        "draftScript.debugMode": {
-          "order": 99,
-          "type": "boolean",
-          "default": false,
-          "description": "Show diagnostic debug bar in DSM Canon Editor (for development only)."
-        },
         "draftScript.dsmReviewFontSize": {
           "order": 23,
           "type": "number",
@@ -739,6 +754,55 @@
           "default": 10000,
           "minimum": 1000,
           "description": "Show a confirmation prompt before running a DSM prompt if the estimated token count exceeds this threshold. Set to a very high number to disable the warning."
+        },
+        "draftScript.export.outputDir": {
+          "order": 40,
+          "type": "string",
+          "default": "exports",
+          "description": "Directory for disposable Draft-Script export artifacts. Relative paths resolve from the novel folder."
+        },
+        "draftScript.export.pandocPath": {
+          "order": 41,
+          "type": "string",
+          "default": "pandoc",
+          "description": "Pandoc executable path used for DOCX, EPUB, HTML, and PDF export."
+        },
+        "draftScript.export.defaultFormat": {
+          "order": 42,
+          "type": "string",
+          "enum": ["docx", "epub", "html", "pdf"],
+          "default": "docx",
+          "description": "Default format highlighted by Draft-Script: Export with Pandoc."
+        },
+        "draftScript.export.pdfEngine": {
+          "order": 43,
+          "type": "string",
+          "default": "xelatex",
+          "description": "Pandoc PDF engine for Draft-Script PDF export."
+        },
+        "draftScript.export.openAfterExport": {
+          "order": 44,
+          "type": "boolean",
+          "default": true,
+          "description": "Open the exported file automatically after a successful Pandoc export when no explicit action is selected."
+        },
+        "draftScript.export.referenceDocx": {
+          "order": 45,
+          "type": "string",
+          "default": "",
+          "description": "Optional reference DOCX passed to Pandoc for DOCX export. Relative paths resolve from the novel folder."
+        },
+        "draftScript.export.epubCover": {
+          "order": 46,
+          "type": "string",
+          "default": "",
+          "description": "Optional cover image passed to Pandoc for EPUB export. Relative paths resolve from the novel folder."
+        },
+        "draftScript.export.template": {
+          "order": 47,
+          "type": "string",
+          "default": "",
+          "description": "Optional Pandoc template for PDF export. Relative paths resolve from the novel folder."
         },
         "draftScript.dsmPromptFile": {
           "order": 99,

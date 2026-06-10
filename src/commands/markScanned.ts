@@ -5,6 +5,7 @@ import * as crypto from 'crypto';
 
 import { NavigatorItem }         from '../providers/navigatorTreeProvider';
 import { NavigatorTreeProvider } from '../providers/navigatorTreeProvider';
+import { isCurrentAnalysisSchema } from '../dsm/analysisStore';
 
 function sectionHash(text: string): string {
   return crypto.createHash('sha256').update(text).digest('hex').slice(0, 16);
@@ -62,6 +63,10 @@ export async function markChapterScanned(
 
   if (!foundFile || !analysis) {
     vscode.window.showWarningMessage(`DSM: No analysis found for "${title}". Analyze it first.`);
+    return;
+  }
+  if (!isCurrentAnalysisSchema(analysis)) {
+    vscode.window.showWarningMessage(`DSM: "${title}" uses an older analysis schema. Re-analyze it first.`);
     return;
   }
 

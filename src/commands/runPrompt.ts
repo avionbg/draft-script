@@ -10,6 +10,54 @@ import { renderIncludeTree, formatIncludeErrors } from '../dsm/promptRunner/incl
 import { createLlmProvider }                   from '../dsm/llmProviders';
 import { NavigatorItem }                       from '../providers/navigatorTreeProvider';
 
+const STARTER_PROMPTS_DIR = path.join(extensionRoot(), 'resources', 'starter-prompts');
+
+function extensionRoot(): string {
+  return path.resolve(__dirname, '..', '..');
+}
+
+export async function installStarterPrompts(rootFolder: string): Promise<number | undefined> {
+  const targetDir = path.join(rootFolder, '.draft-script', 'prompts');
+
+  if (!fs.existsSync(STARTER_PROMPTS_DIR)) {
+    vscode.window.showWarningMessage('DSM Prompt Runner: Starter prompts are not available in this extension build.');
+    return undefined;
+  }
+
+  let entries: fs.Dirent[];
+  try {
+    entries = fs.readdirSync(STARTER_PROMPTS_DIR, { withFileTypes: true });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    vscode.window.showErrorMessage(`DSM Prompt Runner: Could not read starter prompts: ${msg}`);
+    return undefined;
+  }
+
+  fs.mkdirSync(targetDir, { recursive: true });
+
+  let installed = 0;
+  for (const entry of entries.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }))) {
+    if (!entry.isFile() || !entry.name.endsWith('.md')) continue;
+    const source = path.join(STARTER_PROMPTS_DIR, entry.name);
+    const target = path.join(targetDir, entry.name);
+    if (fs.existsSync(target)) continue;
+    fs.copyFileSync(source, target);
+    installed++;
+  }
+
+  const action = await vscode.window.showInformationMessage(
+    installed
+      ? `DSM Prompt Runner: Installed ${installed} starter prompt(s).`
+      : 'DSM Prompt Runner: Starter prompts are already installed.',
+    'Open Prompts Folder'
+  );
+  if (action === 'Open Prompts Folder') {
+    await vscode.commands.executeCommand('revealFileInOS', vscode.Uri.file(targetDir));
+  }
+
+  return installed;
+}
+
 // ─── Shared: pick + build ─────────────────────────────────────────────────────
 
 async function pickPrompt(
@@ -27,14 +75,20 @@ async function pickPrompt(
       return undefined;
     }
     const choice = await vscode.window.showWarningMessage(
-      'DSM Prompt Runner: No prompts found in .draft-script/prompts/. Copy a starter from examples/prompts/ to get started.',
-      'Open examples folder'
+      'DSM Prompt Runner: No prompts found in .draft-script/prompts/. Install starter prompts to get started.',
+      'Install starter prompts',
+      'Open prompts folder'
     );
-    if (choice) {
-      const exDir = path.join(getRootFolder(), 'examples', 'prompts');
-      if (fs.existsSync(exDir)) {
-        vscode.commands.executeCommand('revealFileInOS', vscode.Uri.file(exDir));
+    if (choice === 'Install starter prompts') {
+      const installed = await installStarterPrompts(getRootFolder());
+      if (installed && installed > 0) {
+        registry.load();
+        return pickPrompt(registry, getRootFolder, filter, emptyHint);
       }
+    } else if (choice === 'Open prompts folder') {
+      const promptDir = path.join(getRootFolder(), '.draft-script', 'prompts');
+      fs.mkdirSync(promptDir, { recursive: true });
+      await vscode.commands.executeCommand('revealFileInOS', vscode.Uri.file(promptDir));
     }
     return undefined;
   }

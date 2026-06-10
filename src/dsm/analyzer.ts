@@ -7,10 +7,11 @@ import {
 import { LlmProvider, ChapterSource, DsmParseError } from './types';
 import { CanonEntry, CanonManager, normalizeId } from './canonManager';
 import { RawLlmEntity, resolveEntities } from './statusResolver';
-import { AnalysisStore } from './analysisStore';
+import { ANALYSIS_SCHEMA_VERSION, AnalysisStore, normalizeChapterOverview } from './analysisStore';
 import { extractCandidates } from './localExtractor';
 import { buildPrompt } from './promptBuilder';
 import { SignalManager } from './signalManager';
+import { OverrideStore } from './overrideStore';
 
 export interface AnalysisOutcome {
   analysis:       ChapterAnalysis;
@@ -62,6 +63,7 @@ export async function analyzeText(
   store:         AnalysisStore,
   canon:         CanonManager,
   sigMgr:        SignalManager,
+  overrides?:    OverrideStore,
   sourceChapter?: ChapterSource,
 ): Promise<AnalysisOutcome> {
   const { prompt, promptSource } = buildAnalysisPromptPreview(text, store, sigMgr);
@@ -82,7 +84,7 @@ export async function analyzeText(
 
   const validSignalIds = new Set(signals.map(s => s.id));
   const analysis = buildChapterAnalysis(
-    parsed, raw, text, provider, store, canon, sourceChapter, validSignalIds
+    parsed, raw, text, provider, store, canon, overrides, sourceChapter, validSignalIds
   );
 
   return { analysis, promptSource, sourceChapter };
@@ -99,6 +101,7 @@ function buildChapterAnalysis(
   provider:        LlmProvider,
   store:           AnalysisStore,
   canon:           CanonManager,
+  overrides?:      OverrideStore,
   sourceChapter?:  ChapterSource,
   validSignalIds?: Set<string>,
 ): ChapterAnalysis {
@@ -111,7 +114,7 @@ function buildChapterAnalysis(
   const id   = num != null ? store.chapterId(num) : `chapter-unknown-${Date.now()}`;
 
   return {
-    schemaVersion: 2,
+    schemaVersion: ANALYSIS_SCHEMA_VERSION,
     chapter: {
       id,
       number:      num,
@@ -121,10 +124,11 @@ function buildChapterAnalysis(
       analyzedAt:  new Date().toISOString(),
       model:       provider.id,
     },
-    characters:      resolveEntities(parseRawEntities(obj['characters']), canon.read('characters')),
-    locations:       resolveEntities(parseRawEntities(obj['locations']),  canon.read('locations')),
-    objects:         resolveEntities(parseRawEntities(obj['objects']),    canon.read('objects')),
-    groups:          resolveEntities(parseRawEntities(obj['groups']),     canon.read('groups')),
+    overview:        normalizeChapterOverview(obj['overview']),
+    characters:      resolveEntities(parseRawEntities(obj['characters']), canon.readEffective('characters', overrides?.readCanon('characters'))),
+    locations:       resolveEntities(parseRawEntities(obj['locations']),  canon.readEffective('locations',  overrides?.readCanon('locations'))),
+    objects:         resolveEntities(parseRawEntities(obj['objects']),    canon.readEffective('objects',    overrides?.readCanon('objects'))),
+    groups:          resolveEntities(parseRawEntities(obj['groups']),     canon.readEffective('groups',     overrides?.readCanon('groups'))),
     threads:         parseThreads(obj['threads'], validSignalIds, rawStr),
     timelineEvents:  parseTimeline(obj['timelineEvents'], validSignalIds),
     continuityNotes: parseContinuity(obj['continuityNotes'], validSignalIds),

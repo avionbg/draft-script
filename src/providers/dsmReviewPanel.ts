@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { ChapterAnalysis, ChapterEntity, ThreadUpdate, TimelineEvent, ContinuityNote } from '../dsm/draftScriptTypes';
+import { ChapterAnalysis, ChapterEntity, ChapterOverview, ThreadUpdate, TimelineEvent, ContinuityNote } from '../dsm/draftScriptTypes';
 import { CanonManager, normalizeId } from '../dsm/canonManager';
 import { AnalysisStore } from '../dsm/analysisStore';
 import { IndexBuilder } from '../dsm/indexBuilder';
@@ -171,6 +171,7 @@ function buildReviewHtml(
     : '';
 
   const sections: string[] = [];
+  sections.push(overviewSection(analysis.overview));
 
   // Entity sections grouped by status
   for (const { key, label } of ENTITY_CATEGORIES) {
@@ -336,6 +337,30 @@ if (autoScan) {
 // Section builders
 // ---------------------------------------------------------------------------
 
+function overviewSection(overview: ChapterOverview): string {
+  const list = (items: string[]) => items.length
+    ? `<ul>${items.map(item => `<li>${esc(item)}</li>`).join('')}</ul>`
+    : '<div class="row-role muted">none</div>';
+
+  return `<section>
+  <h3>Chapter Overview</h3>
+  <div class="overview-grid">
+    <div><strong>Purpose</strong><div class="row-role">${esc(overview.purpose || 'none')}</div></div>
+    <div><strong>Emotional Beat</strong><div class="row-role">${esc(overview.emotionalBeat || 'none')}</div></div>
+    <div><strong>Function</strong><div class="row-role">${esc(overview.chapterFunction)}</div></div>
+    <div><strong>Book Impact</strong><div class="row-role">${esc(overview.bookImpact || 'none')}</div></div>
+  </div>
+  <div class="overview-columns">
+    <div><strong>Summary</strong>${list(overview.summary)}</div>
+    <div><strong>Setups</strong>${list(overview.setups)}</div>
+    <div><strong>Payoffs</strong>${list(overview.payoffs)}</div>
+    <div><strong>Human Focus</strong>${list(overview.humanFocus)}</div>
+    <div><strong>Technical Focus</strong>${list(overview.technicalFocus)}</div>
+    <div><strong>Risk Flags</strong>${list(overview.riskFlags)}</div>
+  </div>
+</section>`;
+}
+
 function entitySection(
   label:    string,
   cat:      string,
@@ -491,6 +516,16 @@ section { margin-bottom: 6px; }
 .info-row { opacity: 0.8; }
 .row-left { flex: 1; display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
 .row-role { flex-basis: 100%; font-size: 0.83em; opacity: 0.7; margin-top: 2px; padding-left: 2px; }
+.muted { opacity: 0.45; }
+.overview-grid, .overview-columns {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 8px; padding: 8px; border: 1px solid var(--vscode-widget-border);
+  border-radius: 4px; margin-bottom: 6px;
+}
+.overview-columns { align-items: start; }
+.overview-grid strong, .overview-columns strong { font-size: 0.78em; opacity: 0.65; text-transform: uppercase; letter-spacing: 0.04em; }
+.overview-columns ul { margin: 4px 0 0 16px; padding: 0; font-size: 0.84em; opacity: 0.78; }
+.overview-columns li { margin-bottom: 2px; }
 .row-actions { flex-shrink: 0; }
 .name { font-weight: 600; white-space: nowrap; }
 .alias { font-size: 0.82em; opacity: 0.6; }

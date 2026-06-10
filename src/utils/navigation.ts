@@ -10,6 +10,46 @@ export interface NavigateOptions {
   entityAliases?: string[];
 }
 
+let navigationRefreshSuppressedUntil = 0;
+
+export function suppressNavigationDrivenRefresh(ms = 1500): void {
+  navigationRefreshSuppressedUntil = Math.max(navigationRefreshSuppressedUntil, Date.now() + ms);
+}
+
+export function isNavigationDrivenRefreshSuppressed(): boolean {
+  return Date.now() < navigationRefreshSuppressedUntil;
+}
+
+export async function openTextDocumentPreferVisible(
+  uri: vscode.Uri,
+  options: vscode.TextDocumentShowOptions = { viewColumn: vscode.ViewColumn.One, preview: false },
+): Promise<{ doc: vscode.TextDocument; editor: vscode.TextEditor }> {
+  suppressNavigationDrivenRefresh();
+
+  const visibleEditor = vscode.window.visibleTextEditors.find(editor =>
+    editor.document.uri.toString() === uri.toString()
+  );
+
+  if (visibleEditor) {
+    return { doc: visibleEditor.document, editor: visibleEditor };
+  }
+
+  const doc = await vscode.workspace.openTextDocument(uri);
+  const editor = await vscode.window.showTextDocument(doc, options);
+  suppressNavigationDrivenRefresh();
+  return { doc, editor };
+}
+
+export function selectAndReveal(
+  editor: vscode.TextEditor,
+  range: vscode.Range,
+  revealType: vscode.TextEditorRevealType = vscode.TextEditorRevealType.InCenterIfOutsideViewport,
+): void {
+  suppressNavigationDrivenRefresh();
+  editor.selection = new vscode.Selection(range.start, range.end);
+  editor.revealRange(range, revealType);
+}
+
 // Quote code points as hex numbers — no unicode char literals, immune to smart-quote substitution.
 const QUOTE_CPS = new Set([
   0x0022,  // " QUOTATION MARK
@@ -57,9 +97,8 @@ export async function navigateWithSelection(opts: NavigateOptions): Promise<void
       ? path.join(root, filePath)
       : filePath;
 
-    const uri    = vscode.Uri.file(absPath);
-    const doc    = await vscode.workspace.openTextDocument(uri);
-    const editor = await vscode.window.showTextDocument(doc, { viewColumn: vscode.ViewColumn.One, preview: false });
+    const uri = vscode.Uri.file(absPath);
+    const { doc, editor } = await openTextDocumentPreferVisible(uri);
 
     let positioned = false;
 
@@ -129,8 +168,7 @@ export async function navigateWithSelection(opts: NavigateOptions): Promise<void
         if (hit) {
           const pos    = doc.positionAt(hit.idx);
           const endPos = doc.positionAt(hit.idx + hit.len);
-          editor.selection = new vscode.Selection(pos, endPos);
-          editor.revealRange(new vscode.Range(pos, endPos), vscode.TextEditorRevealType.InCenterIfOutsideViewport);
+          selectAndReveal(editor, new vscode.Range(pos, endPos));
           positioned = true;
           break;
         }
@@ -160,15 +198,13 @@ export async function navigateWithSelection(opts: NavigateOptions): Promise<void
           if (bestIdx >= 0) {
             const startPos = doc.positionAt(bestIdx);
             const endPos   = doc.positionAt(bestIdx + bestLen);
-            editor.selection = new vscode.Selection(startPos, endPos);
-            editor.revealRange(new vscode.Range(startPos, endPos), vscode.TextEditorRevealType.InCenterIfOutsideViewport);
+            selectAndReveal(editor, new vscode.Range(startPos, endPos));
             nameFound = true;
           }
         }
 
         if (!nameFound) {
-          editor.selection = new vscode.Selection(headingPos, headingPos);
-          editor.revealRange(new vscode.Range(headingPos, headingPos), vscode.TextEditorRevealType.AtTop);
+          selectAndReveal(editor, new vscode.Range(headingPos, headingPos), vscode.TextEditorRevealType.AtTop);
         }
       }
     }

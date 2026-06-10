@@ -23,11 +23,12 @@ import { addChapter } from './commands/addChapter';
 import { insertChapterBefore, insertChapterAfter, renumberChapters, moveChapter } from './commands/chapterManagement';
 import { regenerateIndexes }   from './commands/regenerateIndexes';
 import { markChapterScanned } from './commands/markScanned';
-import { previewPrompt, copyPrompt, runPrompt, runAndSavePrompt } from './commands/runPrompt';
+import { previewPrompt, copyPrompt, runPrompt, runAndSavePrompt, installStarterPrompts } from './commands/runPrompt';
 import { runThreadAction } from './commands/threadActions';
 import { openDashboard, openDashboardFolder, reloadDashboards } from './commands/dashboardCommands';
 import { inspectChapterTime, inspectTimeRange, inspectCurrentChapterTime } from './commands/timeInspector';
 import { copyChapterToClipboard } from './commands/copyChapter';
+import { buildManuscriptMarkdown, configurePandocPath, exportWithPandoc } from './commands/exportManuscript';
 import { StoryNavigatorPanel } from './providers/storyNavigatorPanel';
 import { PromptRegistry }          from './dsm/promptRunner/promptRegistry';
 import { VirtualDocumentProvider } from './providers/promptResultProvider';
@@ -35,6 +36,7 @@ import { CommentDecorationProvider } from './providers/commentDecorationProvider
 import { CharacterHoverProvider } from './providers/characterHoverProvider';
 import { CommentsWebviewProvider } from './providers/commentsWebviewProvider';
 import { getAllMarkdownFiles } from './utils/markdownParser';
+import { isNavigationDrivenRefreshSuppressed } from './utils/navigation';
 import * as fs from 'fs';
 
 // ---------------------------------------------------------------------------
@@ -200,10 +202,22 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand('draftScript.suggestLineEditsForRepetitionChapter', () =>
       repetitionProvider.suggestLineEditsForSelectedPhrase()
     ),
-
-    vscode.commands.registerCommand('draftScript.addChapter', () =>
-      addChapter(getNovelFolder())
+    vscode.commands.registerCommand('draftScript.buildManuscriptMarkdown', () =>
+      buildManuscriptMarkdown(getNovelFolder())
     ),
+    vscode.commands.registerCommand('draftScript.exportWithPandoc', () =>
+      exportWithPandoc(getNovelFolder())
+    ),
+    vscode.commands.registerCommand('draftScript.configurePandocPath', () =>
+      configurePandocPath()
+    ),
+
+    vscode.commands.registerCommand('draftScript.addChapter', async () => {
+      const folder = getNovelFolder();
+      await addChapter(folder);
+      navigatorProvider.setNovelFolder(folder);
+      updateMultiFileContextForFolder(folder);
+    }),
 
     vscode.commands.registerCommand('draftScript.addComment', () =>
       addComment(getRootFolder())
@@ -283,6 +297,10 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand('draftScript.runPrompt', (item) =>
       runPrompt(item, promptRegistry, promptResultProvider, getRootFolder)
     ),
+    vscode.commands.registerCommand('draftScript.installStarterPrompts', async () => {
+      const installed = await installStarterPrompts(getRootFolder());
+      if (installed && installed > 0) promptRegistry.load();
+    }),
     vscode.commands.registerCommand('draftScript.runAndSavePrompt', (() => {
       let running = false;
       return async (item) => {
@@ -547,6 +565,10 @@ export function activate(context: vscode.ExtensionContext): void {
   // providers' compute methods run.
   context.subscriptions.push(
     vscode.window.onDidChangeActiveTextEditor(editor => {
+      if (isNavigationDrivenRefreshSuppressed()) {
+        if (editor) commentDecorationProvider.updateDecorations(editor);
+        return;
+      }
       statisticsProvider.refreshForEditor(editor);
       repetitionProvider.refreshForEditor(editor);
       if (editor) commentDecorationProvider.updateDecorations(editor);
@@ -572,6 +594,7 @@ export function activate(context: vscode.ExtensionContext): void {
     { dispose() { clearTimeout(selDebounce); } },
     vscode.window.onDidChangeTextEditorSelection(e => {
       if (!e.textEditor.document.uri.fsPath.toLowerCase().endsWith('.md')) return;
+      if (isNavigationDrivenRefreshSuppressed()) return;
       clearTimeout(selDebounce);
       selDebounce = setTimeout(() => {
         statisticsProvider.refreshForEditor(e.textEditor);

@@ -115,6 +115,23 @@ Hover over any character name in the editor to see that character's description 
 
 A dedicated sidebar panel that analyzes word and phrase frequency across the novel or the current document. Helps identify overused words and repeated phrasing. Click a phrase to jump to its next occurrence in the text.
 
+Use the **lock icon** in the Repetition panel toolbar to pin analysis to the full novel. Unlock it to return to cursor/current-chapter behavior.
+
+Repeated phrases also support a lightweight line-edit workflow:
+
+1. Right-click a repeated phrase in the Repetition panel.
+2. Choose **Suggest Line Edit for This Occurrence** or **Suggest Line Edits for This Chapter**.
+3. Draft-Script sends the sentence context to the configured LLM and opens a review panel.
+4. Review each suggestion:
+   - **Accept** marks it for application.
+   - **Reject** leaves the original text unchanged.
+   - **Edit replacement manually** lets you adjust the proposed sentence before applying.
+   - **Open Diff** opens a readonly original-vs-suggested comparison.
+   - **Open Diff for Accepted** compares all currently accepted suggestions at once.
+5. Click **Apply Accepted** to replace only accepted full-sentence ranges.
+
+Line edits are never applied automatically. Draft-Script validates that the current manuscript text still matches the original sentence before replacing it. If the document changed while suggestions were generated, stale edits are skipped instead of blindly replacing text.
+
 ![Repetition — novel view](resources/repetition-novel.png) ![Repetition — chapter view](resources/repetition-chapter.png)
 
 ### Inline Comments / Annotations
@@ -126,6 +143,60 @@ Select any passage in a Markdown file, then right-click → *Add Comment to Sele
 - Annotated passages are highlighted in the editor with hover tooltips showing the note.
 
 **Split-file novels:** When the novel folder contains more than one Markdown file (one file per chapter), the Chapter Focus mode toggle is hidden — it only applies to single-file novels.
+
+### Export / Build Manuscript
+
+Draft-Script can build a disposable combined manuscript file from your current Markdown source without changing the manuscript itself.
+
+Run `Ctrl+Shift+P` -> **Draft-Script: Build Manuscript Markdown** to create:
+
+```text
+exports/manuscript.md
+```
+
+This command does not require Pandoc or any other external tool. It supports both single-file and split-file projects, preserves Markdown formatting and chapter order, and uses the same project folder/exclusion setup as the Navigator. Generated analysis files, indexes, comments metadata, and export artifacts are not treated as manuscript source.
+
+For document formats, run **Draft-Script: Export with Pandoc...** and choose DOCX, EPUB, HTML, or PDF. Draft-Script does not bundle Pandoc; install it separately or configure `draftScript.export.pandocPath`.
+
+Important:
+
+- DOCX, EPUB, HTML, and PDF export require an external Pandoc installation.
+- On Windows, you can set `draftScript.export.pandocPath` to the full `pandoc.exe` path, or run **Draft-Script: Configure Pandoc Path** and pick the executable.
+- PDF export may also require a PDF engine such as `xelatex` from a TeX distribution.
+- If Pandoc or the PDF engine is missing, Draft-Script shows a friendly error and logs details to the **Draft-Script Export** output channel.
+- Exported files are build artifacts; keep editing the Markdown manuscript, not the exported files.
+
+Optional project config can be stored in `.draft-script/export.json`:
+
+```json
+{
+  "title": "Doba Staklenog Meseca",
+  "subtitle": "Cuvari prvog plamena",
+  "author": "MGAlter",
+  "language": "sr-Latn",
+  "outputDir": "exports",
+  "formats": {
+    "docx": {
+      "enabled": true,
+      "referenceDoc": ""
+    },
+    "epub": {
+      "enabled": true,
+      "cover": ""
+    },
+    "html": {
+      "enabled": true
+    },
+    "pdf": {
+      "enabled": true,
+      "engine": "xelatex",
+      "template": ""
+    }
+  }
+}
+```
+
+Project config overrides VS Code export settings where applicable.
 
 ### Disabling LLM Features
 
@@ -165,6 +236,8 @@ Analyzes chapter text and extracts a structured **canon index** — characters, 
 - **Merge uncertain on rescan** (`draftScript.dsmRescanMergeUncertain`, default off) — when enabled, uncertain entities above the threshold are silently linked to their closest existing canon match instead of being left for manual review.
 
 **Canon Editor:** The book icon in the Characters panel toolbar opens the Canon Editor — a full two-column editor for all canon categories (characters, locations, objects, groups) plus read-only **Threads**, **Timeline**, and **Continuity** tabs, and a **Signals** tab. From here you can edit names, aliases, and descriptions, merge duplicate entries, and delete entries. Merging rewrites all chapter analysis references automatically.
+
+Canon Editor writes manual edits as overrides. New entries created by the user are marked as user-created canon entries, so they remain available even after regenerating indexes or clearing generated canon data. DSM matching uses the effective canon entry: generated canon plus any user overrides.
 
 Each entity's editor pane shows an **Appearances** row listing every chapter where that entity was detected. Click any chapter number to jump directly to the passage where the entity was found — the editor scrolls to the exact quoted text reference in that chapter.
 
@@ -328,7 +401,7 @@ The `examples/dashboards/` folder contains ready-to-use profile examples. Copy a
 - **Rebuild indexes only** — rebuilds all indexes, keeps all canon entries intact.
 - **Rebuild indexes + clear canon entries** — also wipes `canon/characters.json`, `canon/locations.json`, `canon/objects.json`, and `canon/groups.json` for a clean slate. Signal definitions in `canon/signals.json` are never touched.
 
-**Prompt Runner:** Define custom prompts — developmental edit, beta reader, continuity check, pacing, next-chapter drafts — and run them on any chapter from the Navigator or Command Palette. Each prompt is a `.md` file with a YAML header in `.draft-script/prompts/`. Three commands share the same prompt picker and context assembly:
+**Prompt Runner:** Define custom prompts — developmental edit, beta reader, continuity check, pacing, next-chapter drafts — and run them on any chapter from the Navigator or Command Palette. Each prompt is a `.md` file with a YAML header in `.draft-script/prompts/`. Run **DSM: Install Starter Prompts** to copy built-in starter prompts into the project. The main prompt commands share the same picker and context assembly:
 
 - **Preview Prompt** — builds the prompt and opens a read-only document showing every context block with character/token counts, then the full rendered prompt. Use this to tune prompts and inspect token usage before sending anything to an LLM.
 - **Copy Prompt to Clipboard** — builds the prompt and copies it directly to the clipboard. Useful for pasting into ChatGPT, Claude.ai, Gemini, or any other web interface.
@@ -539,6 +612,9 @@ Files are sorted alphanumerically, so a numeric prefix (`chapter-01`, `chapter-0
 | *Draft-Script: Toggle Chapter Focus* | Switch between continuous and focus navigation |
 | *Draft-Script: Merge All Chapters* | Concatenate all chapter files into a single document |
 | *Draft-Script: Split Document by Headings* | Split a single document into individual chapter files |
+| *Draft-Script: Build Manuscript Markdown* | Build `exports/manuscript.md` from the current manuscript without Pandoc |
+| *Draft-Script: Export with Pandoc...* | Export to DOCX, EPUB, HTML, or PDF using an external Pandoc installation |
+| *Draft-Script: Configure Pandoc Path* | Pick the external Pandoc executable and save it to workspace settings |
 | *Draft-Script: Select Novel Root Folder* | Point the extension to your novel folder |
 | *Draft-Script: Add Comment to Selection* | Annotate selected text (also in right-click menu) |
 | *DSM: Analyze Selected Text* | Extract entities from selected text using an LLM (also in right-click menu) |
@@ -558,6 +634,7 @@ Files are sorted alphanumerically, so a numeric prefix (`chapter-01`, `chapter-0
 | *DSM: Preview Prompt* | Build a prompt and open a read-only preview showing context blocks, token estimates, and the full rendered prompt |
 | *DSM: Copy Prompt to Clipboard* | Build a prompt and copy it to the clipboard — for use with external tools like ChatGPT, Claude, or Gemini |
 | *DSM: Run Prompt* | Build and send a prompt to the configured LLM; result opens in a tab beside the chapter |
+| *DSM: Install Starter Prompts* | Copy built-in starter prompts into `.draft-script/prompts/` |
 | *DSM: Run And Save Output* | Build and send a prompt; result is saved to a file defined in the prompt's `output:` config |
 | *DSM: Mark as Scanned* | Reset the orange sync indicator on a chapter heading without re-running analysis (right-click menu) |
 | *DSM: Story Navigator* | Open a popup panel to search or browse all DSM indexes |
@@ -594,6 +671,14 @@ Files are sorted alphanumerically, so a numeric prefix (`chapter-01`, `chapter-0
 | `draftScript.dsmRescanMinCertainty` | `80` | Minimum confidence % for auto-approval when running *Rescan Changed Chapters*. |
 | `draftScript.dsmRescanMergeUncertain` | `false` | Auto-link uncertain entities to their closest canon match during rescan. |
 | `draftScript.promptWarningTokens` | `10000` | Show a confirmation dialog before running a prompt when the estimated token count exceeds this threshold. Set to a very high number to disable. |
+| `draftScript.export.outputDir` | `exports` | Directory for disposable export artifacts. Relative paths resolve from the novel folder. |
+| `draftScript.export.pandocPath` | `pandoc` | External Pandoc executable used for DOCX, EPUB, HTML, and PDF export. Can be a full path such as `C:\Program Files\Pandoc\pandoc.exe`. |
+| `draftScript.export.defaultFormat` | `docx` | Default format highlighted by *Export with Pandoc...*. |
+| `draftScript.export.pdfEngine` | `xelatex` | PDF engine passed to Pandoc for PDF export. Requires a matching external TeX/PDF engine. |
+| `draftScript.export.openAfterExport` | `true` | Open the exported file after successful export when no explicit action is selected. |
+| `draftScript.export.referenceDocx` | *(empty)* | Optional reference DOCX for Pandoc DOCX export. |
+| `draftScript.export.epubCover` | *(empty)* | Optional cover image for Pandoc EPUB export. |
+| `draftScript.export.template` | *(empty)* | Optional Pandoc template for PDF export. |
 | `draftScript.dsmOpenAiApiKey` | *(empty)* | OpenAI API key. Required when `dsmProvider` is `openai`. |
 | `draftScript.dsmOpenAiModel` | `gpt-4.1-mini` | OpenAI model used for DSM analysis. |
 | `draftScript.dsmOllamaUrl` | `http://localhost:11434` | Ollama base URL. Required when `dsmProvider` is `ollama`. |

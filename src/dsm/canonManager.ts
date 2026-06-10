@@ -1,6 +1,6 @@
 import * as fs   from 'fs';
 import * as path from 'path';
-import { CanonEntry } from './draftScriptTypes';
+import { CanonEntry, CanonOverride } from './draftScriptTypes';
 export { CanonEntry } from './draftScriptTypes';
 
 const CANON_DIR = path.join('.draft-script', 'canon');
@@ -20,6 +20,27 @@ export class CanonManager {
     } catch {
       return [];
     }
+  }
+
+  readEffective(category: string, overrides: Record<string, CanonOverride> = {}): CanonEntry[] {
+    const seen = new Set<string>();
+    const entries = this.read(category).map(entry => {
+      seen.add(entry.id);
+      return composeEffectiveEntry(entry, overrides[entry.id]);
+    });
+
+    for (const [id, override] of Object.entries(overrides)) {
+      if (seen.has(id) || !override.userCreated || !override.title) continue;
+      entries.push({
+        id,
+        name:        override.title,
+        aliases:     override.aliases ?? [],
+        description: override.description ?? '',
+        approvedAt:  '',
+      });
+    }
+
+    return entries;
   }
 
   write(category: string, entries: CanonEntry[]): void {
@@ -81,10 +102,34 @@ export class CanonManager {
     }
     return undefined;
   }
+
+  findEffectiveInCategory(
+    category: string,
+    name: string,
+    aliases: string[],
+    overrides: Record<string, CanonOverride> = {},
+  ): CanonEntry | undefined {
+    const allNames = [name, ...aliases].map(normalizeId);
+    for (const entry of this.readEffective(category, overrides)) {
+      const entryIds = [entry.name, ...entry.aliases].map(normalizeId);
+      if (allNames.some(n => entryIds.includes(n))) return entry;
+    }
+    return undefined;
+  }
 }
 
 export const ENTITY_CATEGORIES = ['characters', 'locations', 'objects', 'groups'] as const;
 export type EntityCategory = typeof ENTITY_CATEGORIES[number];
+
+function composeEffectiveEntry(entry: CanonEntry, override?: CanonOverride): CanonEntry {
+  if (!override) return entry;
+  return {
+    ...entry,
+    name:        override.title       ?? entry.name,
+    aliases:     override.aliases     ?? entry.aliases,
+    description: override.description ?? entry.description,
+  };
+}
 
 export function normalizeId(name: string): string {
   return name.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim().replace(/\s+/g, '_');

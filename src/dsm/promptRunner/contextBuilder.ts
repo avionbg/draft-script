@@ -1,13 +1,15 @@
 import * as fs   from 'fs';
 import * as path from 'path';
 import {
-  CharacterIndexItem, ThreadIndexItem, TimelineIndexItem,
+  ChapterAnalysis, ChapterOverview, CharacterIndexItem, ThreadIndexItem, TimelineIndexItem,
   ContinuityIndexItem, ReferenceIndexItem, SignalIndexEntry, Signal,
 } from '../draftScriptTypes';
+import { isCurrentAnalysisSchema, normalizeAnalysis } from '../analysisStore';
 import { PromptContextBlockId, PromptDefinition, PromptRunContext, RenderedContextBlock, VisibilityMode } from './types';
 
 const INDEXES_DIR = path.join('.draft-script', 'indexes');
 const CANON_DIR   = path.join('.draft-script', 'canon');
+const ANALYSIS_CHAPTERS_DIR = path.join('.draft-script', 'analysis', 'chapters');
 
 function readJson<T>(filePath: string): T | null {
   try { return JSON.parse(fs.readFileSync(filePath, 'utf-8')) as T; }
@@ -34,7 +36,7 @@ function defaultContextIds(scope: string): PromptContextBlockId[] {
   switch (scope) {
     case 'selection':  return ['selectedText', 'chapterMeta'];
     case 'sentence':   return [];
-    case 'chapter':    return ['chapterText', 'chapterMeta', 'characters', 'activeThreads', 'activeContinuity', 'signals'];
+    case 'chapter':    return ['chapterText', 'chapterMeta', 'overview', 'characters', 'activeThreads', 'activeContinuity', 'signals'];
     case 'manuscript': return ['characters', 'locations', 'objects', 'groups', 'activeThreads', 'activeContinuity', 'timeline', 'signals'];
     default:           return ['chapterText', 'chapterMeta', 'characters', 'activeThreads'];
   }
@@ -125,6 +127,12 @@ function buildBlock(id: PromptContextBlockId, bctx: Bctx): BlockResult | null {
     }
     case 'chapterSummary':
       return null; // v1: not implemented
+    case 'overview':
+      return buildOverviewBlock(bctx, 0, 'Chapter Overview', id);
+    case 'previousChapterOverview':
+      return buildOverviewBlock(bctx, -1, 'Previous Chapter Overview', id);
+    case 'nextChapterOverview':
+      return buildOverviewBlock(bctx, 1, 'Next Chapter Overview', id);
 
     // ─── Entities ────────────────────────────────────────────────────────────
     //
@@ -334,6 +342,50 @@ function buildBlock(id: PromptContextBlockId, bctx: Bctx): BlockResult | null {
 }
 
 // ─── References (second pass — enriched with thread/continuity IDs) ───────────
+
+function buildOverviewBlock(
+  bctx: Bctx,
+  chapterOffset: number,
+  heading: string,
+  id: PromptContextBlockId,
+): BlockResult | null {
+  const analysis = readChapterAnalysisForOffset(bctx.ctx, chapterOffset);
+  if (!analysis) return null;
+  const content = renderOverview(analysis.overview);
+  return content ? { block: { id, heading, content } } : null;
+}
+
+function readChapterAnalysisForOffset(ctx: PromptRunContext, chapterOffset: number): ChapterAnalysis | null {
+  if (ctx.chapterNumber == null) return null;
+  const chapterNumber = ctx.chapterNumber + chapterOffset;
+  if (chapterNumber < 1) return null;
+  const chapterId = `chapter-${String(chapterNumber).padStart(4, '0')}`;
+  const filePath = path.join(ctx.rootFolder, ANALYSIS_CHAPTERS_DIR, `${chapterId}.json`);
+  const raw = readJson<unknown>(filePath);
+  if (!isCurrentAnalysisSchema(raw)) return null;
+  return normalizeAnalysis(raw);
+}
+
+function renderOverview(overview: ChapterOverview): string {
+  const lines: string[] = [];
+  if (overview.purpose) lines.push(`Purpose: ${overview.purpose}`);
+  if (overview.emotionalBeat) lines.push(`Emotional Beat: ${overview.emotionalBeat}`);
+  lines.push(`Function: ${overview.chapterFunction}`);
+  appendList(lines, 'Summary', overview.summary);
+  appendList(lines, 'Setups', overview.setups);
+  appendList(lines, 'Payoffs', overview.payoffs);
+  appendList(lines, 'Human Focus', overview.humanFocus);
+  appendList(lines, 'Technical Focus', overview.technicalFocus);
+  appendList(lines, 'Risk Flags', overview.riskFlags);
+  if (overview.bookImpact) lines.push(`Book Impact: ${overview.bookImpact}`);
+  return lines.join('\n');
+}
+
+function appendList(lines: string[], label: string, items: string[]): void {
+  if (!items.length) return;
+  lines.push(`${label}:`);
+  for (const item of items) lines.push(`- ${item}`);
+}
 
 function buildReferencesBlock(
   bctx: Bctx,

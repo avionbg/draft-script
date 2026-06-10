@@ -47,6 +47,7 @@ export class OverrideStore {
     if (patch.aliases     !== undefined) next.aliases     = patch.aliases;
     if (patch.notes       !== undefined) next.notes       = patch.notes       || undefined;
     if (patch.tags        !== undefined) next.tags        = patch.tags;
+    if (patch.userCreated !== undefined) next.userCreated = patch.userCreated || undefined;
     // Remove undefined keys
     (Object.keys(next) as (keyof CanonOverride)[]).forEach(k => {
       if (next[k] === undefined) delete next[k];

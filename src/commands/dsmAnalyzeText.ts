@@ -4,7 +4,7 @@ import * as path   from 'path';
 import { analyzeText, buildAnalysisPromptPreview } from '../dsm/analyzer';
 import { createLlmProvider }  from '../dsm/llmProviders';
 import { AnalysisStore }      from '../dsm/analysisStore';
-import { CanonManager, ENTITY_CATEGORIES } from '../dsm/canonManager';
+import { CanonManager, ENTITY_CATEGORIES, normalizeId } from '../dsm/canonManager';
 import { IndexBuilder }       from '../dsm/indexBuilder';
 import { OverrideStore }      from '../dsm/overrideStore';
 import { ChapterAnalysis, ChapterEntity } from '../dsm/draftScriptTypes';
@@ -134,7 +134,7 @@ async function runDsmPipeline(
     async () => {
       try {
         const { analysis, promptSource } = await analyzeText(
-          text, provider, store, canon, sigMgr, sourceChapter
+          text, provider, store, canon, sigMgr, overrides, sourceChapter
         );
 
         // 1. Write chapter analysis immediately
@@ -327,8 +327,8 @@ export async function dsmRescanChanged(
         };
 
         try {
-          const { analysis } = await analyzeText(text, provider, store, canon, sigMgr, sourceChapter);
-          applyAutoApproval(analysis, canon, minCertainty, mergeUncertain);
+          const { analysis } = await analyzeText(text, provider, store, canon, sigMgr, overrides, sourceChapter);
+          applyAutoApproval(analysis, canon, minCertainty, mergeUncertain, overrides);
           store.write(analysis);
           done++;
         } catch (err) {
@@ -352,12 +352,22 @@ export function applyAutoApproval(
   canon:          CanonManager,
   minCertainty:   number,
   mergeUncertain: boolean,
+  overrides?:     OverrideStore,
 ): void {
   // confidence is stored as 0.0–1.0 (from LLM prompt), minCertainty is 0–100 from settings
   const threshold = minCertainty / 100;
   for (const category of ENTITY_CATEGORIES) {
+    const effectiveCanon = canon.readEffective(category, overrides?.readCanon(category));
     const entities = (analysis as unknown as Record<string, ChapterEntity[]>)[category] ?? [];
     for (const entity of entities) {
+      const match = findEffectiveCanonMatch(entity, effectiveCanon);
+      if (match) {
+        entity.status = 'already_indexed';
+        entity.canonId = match.id;
+        delete entity.possibleCanonId;
+        continue;
+      }
+
       if (entity.status === 'new' && entity.confidence >= threshold) {
         canon.addEntry(category, {
           id:          entity.id,
@@ -379,6 +389,14 @@ export function applyAutoApproval(
       }
     }
   }
+}
+
+function findEffectiveCanonMatch(entity: ChapterEntity, canonEntries: { id: string; name: string; aliases: string[] }[]): { id: string } | undefined {
+  const entityIds = [entity.name, ...(entity.aliases ?? [])].map(normalizeId);
+  return canonEntries.find(entry => {
+    const canonIds = [entry.name, ...(entry.aliases ?? [])].map(normalizeId);
+    return entityIds.some(id => canonIds.includes(id));
+  });
 }
 
 // ---------------------------------------------------------------------------

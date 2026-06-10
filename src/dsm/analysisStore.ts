@@ -1,10 +1,11 @@
 import * as fs     from 'fs';
 import * as path   from 'path';
 import * as crypto from 'crypto';
-import { ChapterAnalysis, ThreadResolutionType, ThreadUpdate, ThreadUpdateType } from './draftScriptTypes';
+import { ChapterAnalysis, ChapterFunction, ChapterOverview, ThreadResolutionType, ThreadUpdate, ThreadUpdateType } from './draftScriptTypes';
 
 const BASE_DIR      = '.draft-script';
 const CHAPTERS_DIR  = path.join(BASE_DIR, 'analysis', 'chapters');
+export const ANALYSIS_SCHEMA_VERSION = 3;
 
 export class AnalysisStore {
   private readonly chaptersDir: string;
@@ -28,7 +29,9 @@ export class AnalysisStore {
   read(chapterNum: number): ChapterAnalysis | undefined {
     const file = path.join(this.chaptersDir, `${this.chapterId(chapterNum)}.json`);
     try {
-      return normalizeAnalysis(JSON.parse(fs.readFileSync(file, 'utf-8')));
+      const raw = JSON.parse(fs.readFileSync(file, 'utf-8'));
+      if (!isCurrentAnalysisSchema(raw)) return undefined;
+      return normalizeAnalysis(raw);
     } catch {
       return undefined;
     }
@@ -79,21 +82,43 @@ export class AnalysisStore {
       if (!name.endsWith('.json')) continue;
       try {
         const raw = fs.readFileSync(path.join(this.chaptersDir, name), 'utf-8');
-        results.push(normalizeAnalysis(JSON.parse(raw)));
+        const parsed = JSON.parse(raw);
+        if (!isCurrentAnalysisSchema(parsed)) continue;
+        results.push(normalizeAnalysis(parsed));
       } catch { /* skip corrupt files */ }
     }
     return results.sort((a, b) => (a.chapter.number ?? 0) - (b.chapter.number ?? 0));
   }
 }
 
-type StoredAnalysis = Omit<ChapterAnalysis, 'schemaVersion' | 'threads'> & {
+type StoredAnalysis = Omit<ChapterAnalysis, 'schemaVersion' | 'threads' | 'overview'> & {
   schemaVersion?: number;
   threads?: unknown;
+  overview?: unknown;
 };
+
+export const DEFAULT_CHAPTER_OVERVIEW: ChapterOverview = {
+  summary:         [],
+  purpose:         '',
+  emotionalBeat:   '',
+  chapterFunction: 'mixed',
+  setups:          [],
+  payoffs:         [],
+  humanFocus:      [],
+  technicalFocus:  [],
+  riskFlags:       [],
+  bookImpact:      '',
+};
+
+export function isCurrentAnalysisSchema(raw: unknown): boolean {
+  return typeof raw === 'object' &&
+    raw !== null &&
+    (raw as { schemaVersion?: unknown }).schemaVersion === ANALYSIS_SCHEMA_VERSION;
+}
 
 export function normalizeAnalysis(raw: unknown): ChapterAnalysis {
   const obj = raw as StoredAnalysis;
-  const { threads: _rawThreads, ...rest } = obj;
+  const { threads: _rawThreads, overview: _rawOverview, ...rest } = obj;
   const rawThreads = Array.isArray(obj.threads) ? obj.threads : [];
 
   const threads = rawThreads
@@ -107,9 +132,42 @@ export function normalizeAnalysis(raw: unknown): ChapterAnalysis {
 
   return {
     ...rest,
-    schemaVersion: 2,
+    schemaVersion: ANALYSIS_SCHEMA_VERSION,
+    overview: normalizeChapterOverview(obj.overview),
     threads,
   } as ChapterAnalysis;
+}
+
+export function normalizeChapterOverview(raw: unknown): ChapterOverview {
+  if (typeof raw !== 'object' || raw === null) return { ...DEFAULT_CHAPTER_OVERVIEW };
+  const obj = raw as Record<string, unknown>;
+  return {
+    summary:         stringArray(obj['summary']),
+    purpose:         stringValue(obj['purpose']),
+    emotionalBeat:   stringValue(obj['emotionalBeat']),
+    chapterFunction: parseChapterFunction(obj['chapterFunction']),
+    setups:          stringArray(obj['setups']),
+    payoffs:         stringArray(obj['payoffs']),
+    humanFocus:      stringArray(obj['humanFocus']),
+    technicalFocus:  stringArray(obj['technicalFocus']),
+    riskFlags:       stringArray(obj['riskFlags']),
+    bookImpact:      stringValue(obj['bookImpact']),
+  };
+}
+
+function stringValue(raw: unknown): string {
+  return typeof raw === 'string' ? raw.trim() : '';
+}
+
+function stringArray(raw: unknown): string[] {
+  return Array.isArray(raw)
+    ? raw.map(String).map(s => s.trim()).filter(Boolean)
+    : [];
+}
+
+function parseChapterFunction(raw: unknown): ChapterFunction {
+  const valid: ChapterFunction[] = ['setup', 'development', 'payoff', 'aftermath', 'transition', 'climax', 'resolution', 'mixed'];
+  return valid.includes(raw as ChapterFunction) ? raw as ChapterFunction : 'mixed';
 }
 
 function normalizeThreadUpdate(raw: Record<string, unknown>): ThreadUpdate | undefined {

@@ -7,6 +7,7 @@ import { ChapterFileSystemProvider } from './chapterFileSystemProvider';
 import { PromptRegistry } from '../dsm/promptRunner/promptRegistry';
 import { LINE_EDIT_PROMPT_MISSING, renderLineEditPrompt } from '../dsm/promptRunner/lineEditPrompt';
 import { createLlmProvider } from '../dsm/llmProviders';
+import { openTextDocumentPreferVisible, selectAndReveal } from '../utils/navigation';
 
 // ---------------------------------------------------------------------------
 // Stop-words
@@ -199,23 +200,22 @@ export class RepetitionWebviewProvider implements vscode.WebviewViewProvider {
   // Navigation
   // ---------------------------------------------------------------------------
 
-  private async navigateTo(phrase: string): Promise<void> {
+  private async navigateTo(phrase: string): Promise<vscode.TextEditor | null> {
     const key = phrase.toLowerCase();
     const locs = this.occurrences.get(key) ?? [];
-    if (locs.length === 0) return;
+    if (locs.length === 0) return null;
 
     const idx = this.clickIndex.get(key) ?? 0;
     this.clickIndex.set(key, (idx + 1) % locs.length);
 
     const loc = locs[idx];
     const uri = vscode.Uri.file(loc.file);
-    const doc = await vscode.workspace.openTextDocument(uri);
-    const editor = await vscode.window.showTextDocument(doc);
+    const { editor } = await openTextDocumentPreferVisible(uri);
 
     const start = new vscode.Position(loc.line, loc.col);
     const end   = new vscode.Position(loc.line, loc.col + phrase.length);
-    editor.selection = new vscode.Selection(start, end);
-    editor.revealRange(new vscode.Range(start, end), vscode.TextEditorRevealType.InCenter);
+    selectAndReveal(editor, new vscode.Range(start, end), vscode.TextEditorRevealType.InCenter);
+    return editor;
   }
 
   // ---------------------------------------------------------------------------
@@ -223,10 +223,11 @@ export class RepetitionWebviewProvider implements vscode.WebviewViewProvider {
   // ---------------------------------------------------------------------------
 
   private async suggestLineEditForOccurrence(phrase: string): Promise<void> {
+    const sourceEditor = await this.ensurePhraseVisible(phrase);
     const target = await this.resolveCurrentOrNextSentenceTarget(phrase);
     if (!target) return;
     const suggestions = await this.generateLineEditSuggestions([target], `DSM: Suggesting line edit for "${phrase}"...`);
-    if (suggestions.length) LineEditReviewPanel.open(suggestions);
+    if (suggestions.length) LineEditReviewPanel.open(suggestions, sourceEditor?.viewColumn);
   }
 
   async suggestLineEditsForSelectedPhrase(): Promise<void> {
@@ -240,10 +241,7 @@ export class RepetitionWebviewProvider implements vscode.WebviewViewProvider {
   }
 
   private async suggestLineEditsForChapter(phrase: string): Promise<void> {
-    const editor = vscode.window.activeTextEditor;
-    if (!editor || !this.sentenceTargetFromSelection(editor, phrase)) {
-      await this.navigateTo(phrase);
-    }
+    const sourceEditor = await this.ensurePhraseVisible(phrase);
 
     const targets = await this.collectChapterSentenceTargets(phrase);
     if (!targets.length) {
@@ -263,7 +261,7 @@ export class RepetitionWebviewProvider implements vscode.WebviewViewProvider {
     }
 
     const suggestions = await this.generateLineEditSuggestions(selected, `DSM: Suggesting ${selected.length} line edits...`);
-    if (suggestions.length) LineEditReviewPanel.open(suggestions);
+    if (suggestions.length) LineEditReviewPanel.open(suggestions, sourceEditor?.viewColumn);
   }
 
   private async resolveCurrentOrNextSentenceTarget(phrase: string): Promise<SentenceTarget | null> {
@@ -274,6 +272,15 @@ export class RepetitionWebviewProvider implements vscode.WebviewViewProvider {
     await this.navigateTo(phrase);
     const nextEditor = vscode.window.activeTextEditor;
     return nextEditor ? this.sentenceTargetFromSelection(nextEditor, phrase) : null;
+  }
+
+  private async ensurePhraseVisible(phrase: string): Promise<vscode.TextEditor | null> {
+    const editor = vscode.window.activeTextEditor;
+    if (editor && this.sentenceTargetFromSelection(editor, phrase)) return editor;
+
+    const next = await this.navigateTo(phrase);
+    if (next) await yieldToEventLoop();
+    return next;
   }
 
   private sentenceTargetFromSelection(editor: vscode.TextEditor, phrase: string): SentenceTarget | null {
@@ -962,7 +969,7 @@ ${groupsHtml}
 // ---------------------------------------------------------------------------
 
 class LineEditReviewPanel {
-  static open(suggestions: LineEditSuggestion[]): void {
+  static open(suggestions: LineEditSuggestion[], sourceViewColumn?: vscode.ViewColumn): void {
     const panel = vscode.window.createWebviewPanel(
       'draftScript.lineEditReview',
       'Line Edit Suggestions',
@@ -991,9 +998,14 @@ class LineEditReviewPanel {
         diffUris.push(...uris);
         return;
       }
+      if (msg.command === 'openSuggestionSource') {
+        const suggestion = suggestions.find(s => s.id === String(msg.id ?? ''));
+        if (suggestion) await openLineEditSource(suggestion, sourceViewColumn);
+        return;
+      }
       if (msg.command !== 'applyLineEdits') return;
       const decisions = Array.isArray(msg.decisions) ? msg.decisions as Array<Record<string, unknown>> : [];
-      const applied = await applyLineEditSuggestions(suggestions, decisions);
+      const applied = await applyLineEditSuggestions(suggestions, decisions, sourceViewColumn);
       const skipped = applied.skipped
         ? ` Skipped ${applied.skipped} stale suggestion${applied.skipped === 1 ? '' : 's'}.`
         : '';
@@ -1045,6 +1057,12 @@ class LineEditDiffDocumentProvider implements vscode.TextDocumentContentProvider
   }
 }
 
+const LINE_EDIT_DIFF_OPTIONS: vscode.TextDocumentShowOptions = {
+  viewColumn: vscode.ViewColumn.Beside,
+  preview: true,
+  preserveFocus: false,
+};
+
 async function openLineEditDiff(suggestion: LineEditSuggestion): Promise<vscode.Uri[]> {
   const provider = LineEditDiffDocumentProvider.instance();
   const label = `${path.basename(suggestion.filePath)} line ${suggestion.line}`;
@@ -1058,9 +1076,26 @@ async function openLineEditDiff(suggestion: LineEditSuggestion): Promise<vscode.
     originalUri,
     suggestedUri,
     `Draft-Script Line Edit: ${label}`,
-    { preview: false },
+    LINE_EDIT_DIFF_OPTIONS,
   );
   return [originalUri, suggestedUri];
+}
+
+async function openLineEditSource(suggestion: LineEditSuggestion, sourceViewColumn?: vscode.ViewColumn): Promise<void> {
+  const existing = vscode.window.visibleTextEditors.find(editor =>
+    editor.document.uri.scheme === 'file' &&
+    editor.document.uri.fsPath === suggestion.filePath
+  );
+  if (existing) {
+    existing.selection = new vscode.Selection(suggestion.range.start, suggestion.range.end);
+    existing.revealRange(suggestion.range, vscode.TextEditorRevealType.InCenter);
+    return;
+  }
+
+  const doc = await vscode.workspace.openTextDocument(vscode.Uri.file(suggestion.filePath));
+  const editor = await vscode.window.showTextDocument(doc, { viewColumn: sourceViewColumn ?? vscode.ViewColumn.One, preview: false });
+  editor.selection = new vscode.Selection(suggestion.range.start, suggestion.range.end);
+  editor.revealRange(suggestion.range, vscode.TextEditorRevealType.InCenter);
 }
 
 async function openAcceptedLineEditDiff(
@@ -1094,7 +1129,7 @@ async function openAcceptedLineEditDiff(
     originalUri,
     suggestedUri,
     `Draft-Script Accepted Line Edits: ${accepted.length}`,
-    { preview: false },
+    LINE_EDIT_DIFF_OPTIONS,
   );
   return [originalUri, suggestedUri];
 }
@@ -1140,6 +1175,7 @@ function compactContextLines(text: string, side: 'head' | 'tail', limit: number)
 async function applyLineEditSuggestions(
   suggestions: LineEditSuggestion[],
   decisions: Array<Record<string, unknown>>,
+  sourceViewColumn?: vscode.ViewColumn,
 ): Promise<{ applied: number; skipped: number }> {
   const byId = new Map(suggestions.map(s => [s.id, s]));
   const accepted = decisions
@@ -1173,10 +1209,12 @@ async function applyLineEditSuggestions(
   if (applied > 0) {
     await vscode.workspace.applyEdit(edit);
     if (reveal) {
-      const doc = await vscode.workspace.openTextDocument(reveal.uri);
-      const editor = await vscode.window.showTextDocument(doc);
-      editor.selection = new vscode.Selection(reveal.range.start, reveal.range.start);
-      editor.revealRange(reveal.range, vscode.TextEditorRevealType.InCenter);
+      const { editor } = await openTextDocumentPreferVisible(reveal.uri, {
+        viewColumn: sourceViewColumn ?? vscode.ViewColumn.One,
+        preview: false,
+      });
+      const position = reveal.range.start;
+      selectAndReveal(editor, new vscode.Range(position, position), vscode.TextEditorRevealType.InCenter);
     }
   }
   return { applied, skipped };
@@ -1192,7 +1230,7 @@ function lineEditReviewHtml(suggestions: LineEditSuggestion[]): string {
   </div>
   <div class="loc">Line ${s.line} &middot; ${esc(path.basename(s.filePath))}</div>
   <div class="label">Original</div>
-  <pre>${esc(s.text)}</pre>
+  <pre class="source-text" onclick="openSource(this)" title="Open in manuscript">${esc(s.text)}</pre>
   <div class="label">Replacement</div>
   <textarea ${keep ? 'disabled' : ''}>${esc(s.replacement || s.text)}</textarea>
   <div class="meta">${esc(s.reason || (keep ? 'LLM recommends keeping the original.' : ''))} &middot; confidence ${Number(s.confidence || 0).toFixed(2)}</div>
@@ -1218,6 +1256,8 @@ button { font: inherit; padding: 4px 10px; cursor: pointer; }
 .loc, .meta { opacity: 0.62; font-size: 0.86em; margin-top: 4px; }
 .label { opacity: 0.55; text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.76em; margin-top: 10px; }
 pre { white-space: pre-wrap; background: rgba(128,128,128,0.08); padding: 8px; border-radius: 4px; margin: 4px 0 0; }
+pre.source-text { cursor: pointer; }
+pre.source-text:hover { outline: 1px solid var(--vscode-focusBorder); }
 textarea { width: 100%; min-height: 72px; margin-top: 4px; padding: 8px; box-sizing: border-box; font: inherit; color: var(--vscode-input-foreground); background: var(--vscode-input-background); border: 1px solid var(--vscode-input-border, var(--vscode-widget-border)); border-radius: 4px; }
 </style>
 </head>
@@ -1289,6 +1329,10 @@ function openDiff(button) {
     id: row.dataset.id,
     replacement: row.querySelector('textarea').value
   });
+}
+function openSource(node) {
+  var row = node.closest('.suggestion');
+  vscode.postMessage({ command: 'openSuggestionSource', id: row.dataset.id });
 }
 function cancel() {
   vscode.postMessage({ command: 'cancelLineEdits' });
@@ -1526,14 +1570,6 @@ function suppressedNgrams(
   occurrences: Map<string, Occurrence[]>,
   coverage = 0.9,
 ): Set<string> {
-  // Lookup set per phrase: "file\0line\0wordStart"
-  const occSets = new Map<string, Set<string>>();
-  for (const [phrase, occs] of occurrences) {
-    const set = new Set<string>();
-    for (const o of occs) set.add(`${o.file}\0${o.line}\0${o.wordStart}`);
-    occSets.set(phrase, set);
-  }
-
   // Collect all phrases that pass the min-count filter
   const accepted = new Set<string>();
   for (let n = 1; n <= MAX_NGRAM; n++) {
@@ -1548,6 +1584,44 @@ function suppressedNgrams(
     (a, b) => b.split(' ').length - a.split(' ').length,
   );
   const suppressed = new Set<string>();
+  const coveredByLonger = new Map<string, Set<string>>();
+
+  const addCovered = (phrase: string, occurrenceKey: string) => {
+    let covered = coveredByLonger.get(phrase);
+    if (!covered) {
+      covered = new Set<string>();
+      coveredByLonger.set(phrase, covered);
+    }
+    covered.add(occurrenceKey);
+  };
+
+  for (const phrase of sorted) {
+    const occs = occurrences.get(phrase) ?? [];
+    if (occs.length === 0) continue;
+
+    const covered = coveredByLonger.get(phrase);
+    if (covered && covered.size / occs.length >= coverage) {
+      suppressed.add(phrase);
+      continue;
+    }
+
+    const words = phrase.split(' ');
+    if (words.length <= 1) continue;
+
+    for (const occ of occs) {
+      for (let start = 0; start < words.length; start++) {
+        for (let len = 1; len <= words.length - start; len++) {
+          if (len === words.length) continue;
+          const subPhrase = words.slice(start, start + len).join(' ');
+          if (!accepted.has(subPhrase)) continue;
+          addCovered(subPhrase, `${occ.file}\0${occ.line}\0${occ.wordStart + start}`);
+        }
+      }
+    }
+  }
+
+  return suppressed;
+  /*
 
   for (let si = 0; si < sorted.length; si++) {
     const shortPhrase = sorted[si];
@@ -1566,7 +1640,7 @@ function suppressedNgrams(
       // Check every position where shortPhrase sits inside longPhrase
       for (let offset = 0; offset <= longWords.length - shortWords.length; offset++) {
         if (!shortWords.every((w, j) => w === longWords[offset + j])) continue;
-        const longSet = occSets.get(longPhrase) ?? new Set<string>();
+        const longSet = new Set<string>();
         for (let i = 0; i < shortOccs.length; i++) {
           if (coveredIdx.has(i)) continue;
           const key = `${shortOccs[i].file}\0${shortOccs[i].line}\0${shortOccs[i].wordStart - offset}`;
@@ -1581,6 +1655,7 @@ function suppressedNgrams(
     }
   }
 
+  */
   return suppressed;
 }
 

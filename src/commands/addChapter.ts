@@ -33,6 +33,60 @@ function findLastChapterNumber(novelFolder: string, format: string): number {
   return max;
 }
 
+function chapterHeadingRegex(format: string): RegExp | null {
+  const parts = format.split('{num}');
+  if (parts.length !== 2) return null;
+  return new RegExp(
+    `^#\\s+${escapeForRegex(parts[0])}(\\d+)${escapeForRegex(parts[1])}`,
+    'gm'
+  );
+}
+
+function getNovelMarkdownFiles(novelFolder: string): string[] {
+  const excluded = new Set<string>(
+    vscode.workspace.getConfiguration('draftScript').get<string[]>('navigatorExclude', [])
+  );
+  return getAllMarkdownFiles(novelFolder)
+    .filter(file => {
+      if (path.basename(file) === 'characters.md') return false;
+      const rel = path.relative(novelFolder, file);
+      const firstSegment = rel.split(path.sep)[0];
+      return !excluded.has(firstSegment);
+    });
+}
+
+function getChapterFiles(novelFolder: string, format: string): string[] {
+  const re = chapterHeadingRegex(format);
+  if (!re) return [];
+  const files: string[] = [];
+  for (const file of getNovelMarkdownFiles(novelFolder)) {
+    try {
+      const content = fs.readFileSync(file, 'utf-8');
+      re.lastIndex = 0;
+      if (re.test(content)) files.push(file);
+    } catch { /* skip unreadable */ }
+  }
+  return files;
+}
+
+function findSingleNovelFile(novelFolder: string, format: string): string | undefined {
+  const chapterFiles = getChapterFiles(novelFolder, format);
+  if (chapterFiles.length === 1) return chapterFiles[0];
+
+  const active = vscode.window.activeTextEditor?.document;
+  if (
+    active?.uri.scheme === 'file' &&
+    active.languageId === 'markdown' &&
+    active.uri.fsPath.startsWith(novelFolder) &&
+    chapterFiles.length === 0
+  ) {
+    return active.uri.fsPath;
+  }
+
+  const mdFiles = getNovelMarkdownFiles(novelFolder);
+  return mdFiles.length === 1 ? mdFiles[0] : undefined;
+}
+
 export async function addChapter(novelFolder: string): Promise<void> {
   if (!novelFolder || !fs.existsSync(novelFolder)) {
     vscode.window.showErrorMessage('Draft-Script: No novel folder configured.');
@@ -56,6 +110,30 @@ export async function addChapter(novelFolder: string): Promise<void> {
 
   const trimmed = title.trim();
   if (!trimmed) return;
+
+  const singleFilePath = findSingleNovelFile(novelFolder, format);
+  if (singleFilePath) {
+    const filePath = singleFilePath;
+    if (!filePath) {
+      vscode.window.showWarningMessage('Draft-Script: No manuscript file found.');
+      return;
+    }
+
+    const existing = fs.readFileSync(filePath, 'utf-8');
+    const base = existing.trimEnd();
+    const separator = base.length > 0 ? '\n\n' : '';
+    const insert = `${separator}# ${trimmed}\n\n`;
+    const headingOffset = base.length + separator.length;
+    fs.writeFileSync(filePath, `${base}${insert}`, 'utf-8');
+
+    const doc = await vscode.workspace.openTextDocument(vscode.Uri.file(filePath));
+    const editor = await vscode.window.showTextDocument(doc, { preview: false });
+    const start = doc.positionAt(headingOffset);
+    const end = doc.positionAt(headingOffset + `# ${trimmed}`.length);
+    editor.selection = new vscode.Selection(start, end);
+    editor.revealRange(new vscode.Range(start, end), vscode.TextEditorRevealType.InCenter);
+    return;
+  }
 
   // Build a safe filename slug
   const slug = trimmed

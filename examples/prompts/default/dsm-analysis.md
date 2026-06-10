@@ -1,6 +1,7 @@
 You are analyzing a chapter from a novel.
 
 Extract from the provided text:
+- overview: concise chapter summary, structural purpose, emotional/social function, setup/payoff role, human/technical focus, and editorial risk flags.
 - characters: named people, beings, or roles that matter in the passage.
 - locations: named places, routes, settlements, rooms, regions, or other meaningful spaces.
 - objects: named or significant items, tools, documents, resources, devices, symbols, or artifacts.
@@ -27,6 +28,15 @@ Rules:
 - roleInChapter: what this entity specifically does or represents in THIS passage.
 - reference: include 1-2 short quotes or paraphrases supporting each extraction.
 - aliases: list other name forms used in the text.
+
+Chapter overview guidance:
+- Keep summary factual and short.
+- Do not rewrite the chapter or invent events.
+- Purpose should explain the chapter's structural role in the book.
+- Emotional beat should identify what changes in Marko, another character, a relationship, or the community.
+- If the chapter is mostly procedural or technical, say so in riskFlags.
+- If other characters gain agency or take over parts of Marko's system, include that in humanFocus.
+- Use Serbian if the manuscript is Serbian.
 
 {{context}}
 

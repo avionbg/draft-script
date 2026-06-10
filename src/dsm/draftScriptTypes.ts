@@ -3,8 +3,9 @@
 // ---------------------------------------------------------------------------
 
 export interface ChapterAnalysis {
-  schemaVersion: 2;
+  schemaVersion: 3;
   chapter: ChapterMeta;
+  overview: ChapterOverview;
   characters:      ChapterEntity[];
   locations:       ChapterEntity[];
   objects:         ChapterEntity[];
@@ -14,6 +15,29 @@ export interface ChapterAnalysis {
   threads:         ThreadUpdate[];
   continuityNotes: ContinuityNote[];
   timeIndex?:      ChapterTimeIndex;
+}
+
+export type ChapterFunction =
+  | 'setup'
+  | 'development'
+  | 'payoff'
+  | 'aftermath'
+  | 'transition'
+  | 'climax'
+  | 'resolution'
+  | 'mixed';
+
+export interface ChapterOverview {
+  summary:        string[];
+  purpose:        string;
+  emotionalBeat:  string;
+  chapterFunction: ChapterFunction;
+  setups:         string[];
+  payoffs:        string[];
+  humanFocus:     string[];
+  technicalFocus: string[];
+  riskFlags:      string[];
+  bookImpact:     string;
 }
 
 export interface ChapterMeta {
@@ -291,6 +315,7 @@ export interface CanonOverride {
   aliases?:     string[];
   notes?:       string;
   tags?:        string[];
+  userCreated?: boolean;
 }
 
 export interface IndexOverride {

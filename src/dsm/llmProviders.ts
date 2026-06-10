@@ -172,6 +172,18 @@ export class MockProvider implements LlmProvider {
 
   async complete(_prompt: string): Promise<string> {
     return JSON.stringify({
+      overview: {
+        summary: ['Elara and Denn discuss a tense crossing while the ship carries unknown cargo.'],
+        purpose: 'Introduces the voyage problem and the hidden cargo mystery.',
+        emotionalBeat: 'Denn distrusts the mission while Elara keeps the crew moving.',
+        chapterFunction: 'setup',
+        setups: ['The sealed hold mystery', 'Engine trouble before the crossing'],
+        payoffs: [],
+        humanFocus: ['Elara maintains authority under pressure', 'Denn voices skepticism'],
+        technicalFocus: ['Navigation', 'Secondary engine strain'],
+        riskFlags: [],
+        bookImpact: 'Positions the ship journey around secrecy and mechanical risk.',
+      },
       characters: [
         { name: 'Elara', aliases: ['the navigator'], description: 'Navigator keeping the crew on course.', confidence: 0.95 },
         { name: 'Denn',  aliases: [],                description: 'Ship engineer, skeptical of the mission.', confidence: 0.98 },
